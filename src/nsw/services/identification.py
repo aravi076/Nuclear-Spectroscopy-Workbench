@@ -39,6 +39,7 @@ from nsw.core.errors import ProcessingError
 from nsw.core.nuclear_data import NuclideRecord, ReferenceLibrary
 from nsw.core.spectrum import Spectrum
 from nsw.io.reference_data import KNOWN_SOURCES, JsonFileProvider, load_library
+from nsw.services import calibration as calibration_service
 from nsw.services.calibration import peak_rows
 from nsw.services.export import ExportError, ensure_output_allowed
 from nsw.services.peaks import spectrum_name
@@ -82,6 +83,11 @@ def missing_inputs(spectrum: Spectrum, library: ReferenceLibrary | None) -> tupl
             "verified energy calibration (status: "
             f"{spectrum.calibration_status.value}); channel numbers and file or folder "
             "names cannot identify a nuclide"
+        )
+    if not spectrum.is_synthetic and not calibration_service.EXPERIMENTAL_VERIFICATION_ENABLED:
+        missing.append(
+            "authorisation: verified energy calibrations are not enabled for experimental "
+            "spectra, so no experimental spectrum can be processed here"
         )
     if library is None or not library.records:
         missing.append(
@@ -202,6 +208,8 @@ def identify(
             + "; ".join(missing)
         )
     cal = _calibration(spectrum)
+    if any(f.spectrum_sha256 != spectrum.data_sha256 for f in fits):
+        raise ProcessingError("the fitted peaks belong to a different spectrum")
     peaks = observed_peaks(spectrum, fits)
     if not peaks:
         raise ProcessingError("no usable fitted peaks: fit peaks first")
@@ -214,7 +222,9 @@ def identify(
         )
     settings = settings or IdentificationSettings()
     if settings.energy_range_kev is None:
-        span = cal.channel_range or (float(spectrum.channels[0]), float(spectrum.channels[-1]))
+        # the whole spectrum: restricting to the span of the calibration points would
+        # drop the outermost calibration lines themselves by rounding
+        span = (float(spectrum.channels[0]), float(spectrum.channels[-1]))
         lo, hi = (float(cal.energy_at(c)) for c in span)
         settings = IdentificationSettings(
             k=settings.k,

@@ -62,6 +62,7 @@ class LineActivity:
     rel_efficiency: float
     half_life_sensitivity: float  # d ln A / dT
     extrapolated: bool  # efficiency taken outside the calibrated energy range
+    stat_bq: float = math.nan  # absolute statistical uncertainty, defined for any area
 
     def quantity(self, half_life_unc_s: float) -> Quantity:
         rel_sys = math.sqrt(
@@ -72,8 +73,10 @@ class LineActivity:
         return Quantity(
             self.activity_bq,
             Unit.BECQUEREL,
-            stat=self.activity_bq * self.rel_stat,
-            sys=self.activity_bq * rel_sys,
+            stat=self.stat_bq
+            if math.isfinite(self.stat_bq)
+            else abs(self.activity_bq * self.rel_stat),
+            sys=abs(self.activity_bq) * rel_sys,
         )
 
 
@@ -116,7 +119,8 @@ def line_activity(
     d = decay.decay_factor(half_life_s, dt)
     f = decay.in_measurement_factor(half_life_s, timing.real_time_s)
     eps, rel_eps, extrapolated = curve.efficiency(line.energy_kev)
-    value = net_area / (float(eps[0]) * line.emission_probability * timing.live_time_s * f * d)
+    per_count = 1.0 / (float(eps[0]) * line.emission_probability * timing.live_time_s * f * d)
+    value = net_area * per_count
     sensitivity = -(
         decay.d_ln_decay_factor_d_half_life(half_life_s, dt)
         + decay.d_ln_in_measurement_factor_d_half_life(half_life_s, timing.real_time_s)
@@ -129,6 +133,7 @@ def line_activity(
         rel_efficiency=float(rel_eps[0]),
         half_life_sensitivity=sensitivity,
         extrapolated=bool(extrapolated[0]),
+        stat_bq=net_area_unc * per_count,
     )
 
 
@@ -154,6 +159,8 @@ def combine_lines(
     v = v + curve.relative_covariance([r.line.energy_kev for r in lines])
     h = np.array([r.half_life_sensitivity for r in lines]) * half_life_unc_s
     v = v + np.outer(h, h)
+    if np.linalg.cond(v) > 1e12:
+        raise ProcessingError("the covariance of the line activities is singular")
     v_inv = np.linalg.inv(v)
     ones = np.ones(n)
     norm = float(ones @ v_inv @ ones)

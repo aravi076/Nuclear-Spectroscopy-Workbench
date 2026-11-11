@@ -195,6 +195,11 @@ def apply_calibration(spectrum: Spectrum, record: EnergyCalibration) -> Spectrum
             f"calibration belongs to detector {record.detector_id!r}, "
             f"the spectrum to {spectrum.detector_id!r}"
         )
+    if record.is_verified and not spectrum.is_synthetic and not EXPERIMENTAL_VERIFICATION_ENABLED:
+        raise ProcessingError(
+            "a verified calibration cannot be attached to an experimental spectrum: "
+            + PROVISIONAL_REASON
+        )
     return spectrum.evolve(energy_calibration=record)
 
 

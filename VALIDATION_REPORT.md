@@ -12,8 +12,8 @@ Three categories are kept strictly apart:
    handling; they are **not** a validation of detector physics, and no physical
    reference value has been reproduced yet.
 
-Test run of record: 390 tests, all passing (217 unit, 35 integration, 138 validation);
-96 % statement coverage of the non-GUI code. Tests that read private laboratory
+Test run of record: 405 tests, all passing (217 unit, 35 integration, 153 validation);
+97 % statement coverage of the non-GUI code. Tests that read private laboratory
 measurements are not part of this repository.
 
 ## 1. Software verification

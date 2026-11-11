@@ -26,7 +26,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from nsw.core.errors import ProcessingError
 
@@ -74,6 +74,13 @@ class Provenance(_Model):
     parser: str = Field(min_length=1)  # importer name and version
     raw_sha256: str | None = None  # hash of the original file the record was read from
     transformations: tuple[str, ...] = ()  # unit conversions etc. applied on import
+
+    @field_validator("evaluation", mode="before")
+    @classmethod
+    def _normalise_evaluation(cls, value: Any) -> Any:
+        """Evaluation names are compared exactly, so they are stored trimmed and in
+        upper case: "ddep " and "DDEP" must not count as two evaluations."""
+        return value.strip().upper() if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def _check(self) -> Any:
@@ -164,6 +171,9 @@ class NuclideRecord(_Model):
                 f"{self.nuclide}: fictitious names (SYN-, DECOY-) and fictitious provenance "
                 "must be used together"
             )
+        for value in (self.half_life_s, self.half_life_unc_s):
+            if value is not None and not math.isfinite(value):
+                raise ProcessingError(f"{self.nuclide}: half-life values must be finite")
         if self.half_life_unc_s is not None and self.half_life_s is None:
             raise ProcessingError(f"{self.nuclide}: half-life uncertainty without a half-life")
         energies = [(line.energy_kev, line.origin, line.transition) for line in self.lines]

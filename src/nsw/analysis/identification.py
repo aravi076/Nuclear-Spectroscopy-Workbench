@@ -48,10 +48,23 @@ intensity test   With a curve and >= 2 matched lines inside its range: the value
                  not corrected and can make a real cascade emitter fail this test.
 interference     A peak matched by lines of several nuclides is shared; this is listed
                  for every line. A nuclide whose peaks are all explained by one other
-                 candidate that explains more peaks is called subsumed.
+                 candidate that explains more peaks, and that is itself probable or
+                 consistent, is called subsumed. A rejected candidate subsumes nothing.
+peak counting    Peaks closer together than k combined energy uncertainties count as
+                 one peak. Only peaks matched by lines of known emission probability
+                 count towards the two peaks a class above POSSIBLE needs.
+anchor area      When several lines of the nuclide fall on the anchor peak, its area is
+                 attributed to their summed weight. If another nuclide shares the anchor
+                 peak, predictions from it are too high; the shared peak is listed.
+outside curve    Matched or unmatched lines outside the efficiency curve are not
+                 weighed: they enter neither the line fraction nor the intensity test.
+supplied peaks   A line is "missing" when no fitted peak was supplied at its energy.
+                 The engine does not look into the spectrum: fit all peaks first.
 
 Score (0 to 1) = line fraction x uniqueness x intensity factor, with
-uniqueness = (W_unique + 0.5 W_shared) / W_matched and intensity factor 0.5 when the
+uniqueness = (W_unique + 0.5 W_shared) / W_matched over the matched lines of known
+emission probability (weights P; by count if only relative lines match) and intensity
+factor 0.5 when the
 intensity test fails, 1 otherwise. The score only orders candidates of the same class.
 
 Confidence classes
@@ -68,6 +81,7 @@ CONSISTENT     >= 2 peaks matched, no expected line missing, intensity test pass
 
 from __future__ import annotations
 
+import itertools
 import math
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -267,6 +281,28 @@ def match_line(
     return best
 
 
+def peak_groups(peaks: Sequence[ObservedPeak], settings: IdentificationSettings) -> list[int]:
+    """Group index per peak. Peaks whose energies differ by less than k combined standard
+    uncertainties cannot be told apart by the matching window and form one group: two
+    list entries for one physical peak must not count as two matched peaks."""
+    order = sorted(range(len(peaks)), key=lambda i: peaks[i].energy_kev)
+    groups = [0] * len(peaks)
+    group = 0
+    for previous, current in itertools.pairwise(order):
+        a, b = peaks[previous], peaks[current]
+        sigma = math.sqrt(
+            a.position_unc_kev**2
+            + a.calibration_unc_kev**2
+            + b.position_unc_kev**2
+            + b.calibration_unc_kev**2
+            + 2.0 * settings.extra_energy_unc_kev**2
+        )
+        if b.energy_kev - a.energy_kev > settings.k * sigma:
+            group += 1
+        groups[current] = group
+    return groups
+
+
 def _efficiency(curve: EfficiencyCurve, energy: float) -> tuple[float, bool]:
     value, _, extrapolated = curve.efficiency(energy)
     return float(value[0]), bool(extrapolated[0])
@@ -300,7 +336,13 @@ def _intensity_test(
     rel_prob = np.array([(m.line.intensity_unc or 0.0) for m in usable]) / prob
     y = np.log(area / (prob * eff))
     v = np.diag(rel_area**2 + rel_prob**2) + curve.relative_covariance(energies)
-    v_inv = np.linalg.inv(v)
+    try:
+        v_inv = np.linalg.inv(v)
+    except np.linalg.LinAlgError as exc:
+        raise ProcessingError(
+            "the intensity test has a singular covariance: peak areas and emission "
+            "probabilities need uncertainties"
+        ) from exc
     ones = np.ones(n)
     mean = float(ones @ v_inv @ y) / float(ones @ v_inv @ ones)
     r = y - mean
@@ -316,8 +358,10 @@ def _evaluate(
     energy_range: tuple[float, float],
     curve: EfficiencyCurve | None,
     detectable_area: Callable[[float], float] | None,
+    groups: Sequence[int],
 ) -> Candidate | str:
-    """Evidence for one record, or the reason why it was not evaluated."""
+    """Evidence for one record, or the reason why it was not evaluated. ``groups[i]`` is
+    the index of the group of unresolvable peaks that peak ``i`` belongs to."""
     lo, hi = energy_range
     in_range = [line for line in record.lines if lo <= line.energy_kev <= hi]
     absolute = [
@@ -331,6 +375,11 @@ def _evaluate(
     warnings: list[str] = []
     if any(line.energy_unc_kev is None for line in absolute + relative):
         warnings.append("the library gives no uncertainty for some line energies (taken as 0)")
+    if any(line.intensity_unc is None for line in absolute):
+        warnings.append(
+            "the library gives no uncertainty for some emission probabilities (taken as 0): "
+            "the intensity test is stricter than the data justify"
+        )
 
     matches: list[LineMatch] = []
     unmatched_lines: list[GammaRecord] = []
@@ -379,10 +428,24 @@ def _evaluate(
                 return math.nan if extrapolated else line.intensity * eff
             return line.intensity
 
-        anchor_weight = weight(anchor.line)
+        # the anchor peak holds every line of this nuclide matched to it
+        anchor_weight = sum(
+            weight(m.line) for m in absolute_matches if m.peak_index == anchor.peak_index
+        )
+        if math.isnan(anchor_weight):
+            anchor_weight = weight(anchor.line)
+        unweighed = 0
         for m in absolute_matches:
             w = weight(m.line)
-            w_matched += m.line.intensity if math.isnan(w) else w
+            if math.isnan(w):
+                unweighed += 1  # outside the efficiency curve: cannot be weighed
+            else:
+                w_matched += w
+        if unweighed:
+            warnings.append(
+                f"{unweighed} matched line(s) lie outside the efficiency curve and carry no "
+                "weight in the line fraction"
+            )
         for line in unmatched_lines:
             if not line.is_absolute:
                 unmatched.append(UnmatchedLine(line, False, None, None, "relative intensity"))
@@ -421,7 +484,8 @@ def _evaluate(
             intensity = _intensity_test(absolute_matches, peaks, curve, settings.intensity_p_min)
             warnings.append("true coincidence summing is not corrected in the intensity test")
 
-    n_peaks = len({m.peak_index for m in matches})
+    n_peaks = len({groups[m.peak_index] for m in matches})
+    n_absolute = len({groups[m.peak_index] for m in absolute_matches})
     missing = [u for u in unmatched if u.expected]
     if absolute_matches and (line_fraction < 0.5 or strongest_missing):
         confidence = Confidence.NOT_SUPPORTED
@@ -436,6 +500,12 @@ def _evaluate(
     elif not absolute_matches:
         confidence = Confidence.POSSIBLE
         reasons.append("relative intensities only: evidence is limited to the energies")
+    elif n_absolute < 2:
+        confidence = Confidence.POSSIBLE
+        reasons.append(
+            "only one peak matches a line of known emission probability; the other matches "
+            "are relative intensities, which add no evidence beyond the energy"
+        )
     elif missing:
         confidence = Confidence.POSSIBLE
         reasons.append(f"{len(missing)} expected line(s) not found")
@@ -480,6 +550,10 @@ def _with_interference(candidates: list[Candidate]) -> list[Candidate]:
         for i in c.matched_peaks:
             owners.setdefault(i, set()).add(c.nuclide)
     peaks_of = {c.nuclide: set(c.matched_peaks) for c in candidates}
+    # only a candidate that itself stands (probable or consistent) can explain another away
+    supported = {
+        c.nuclide: c.confidence in (Confidence.CONSISTENT, Confidence.PROBABLE) for c in candidates
+    }
     out: list[Candidate] = []
     for c in candidates:
         matches = tuple(
@@ -492,15 +566,22 @@ def _with_interference(candidates: list[Candidate]) -> list[Candidate]:
             )
             for m in c.matches
         )
-        total = sum(m.line.intensity for m in matches)
-        unique = sum(m.line.intensity for m in matches if not m.shared_with)
+        # per-decay intensities only; relative ones have no common scale (then: count)
+        weighed = [m for m in matches if m.line.is_absolute]
+        weights = [m.line.intensity for m in weighed] if weighed else [1.0] * len(matches)
+        weighed = weighed or list(matches)
+        total = sum(weights)
+        unique = sum(w for m, w in zip(weighed, weights, strict=True) if not m.shared_with)
         uniqueness = (unique + 0.5 * (total - unique)) / total
         confidence, reasons = c.confidence, list(c.reasons)
         mine = peaks_of[c.nuclide]
         covering = sorted(
             other
             for other, theirs in peaks_of.items()
-            if other != c.nuclide and mine <= theirs and len(theirs) > len(mine)
+            if other != c.nuclide
+            and mine <= theirs
+            and len(theirs) > len(mine)
+            and supported[other]
         )
         if covering and confidence in (Confidence.CONSISTENT, Confidence.PROBABLE):
             confidence = Confidence.POSSIBLE
@@ -567,15 +648,27 @@ def identify(
         energy_range = (max(0.0, min(energies) - margin), max(energies) + margin)
     candidates: list[Candidate] = []
     not_evaluated: list[tuple[str, str]] = []
+    groups = peak_groups(peaks, settings)
     for record in records:
-        outcome = _evaluate(record, peaks, settings, energy_range, efficiency, detectable_area)
+        outcome = _evaluate(
+            record, peaks, settings, energy_range, efficiency, detectable_area, groups
+        )
         if isinstance(outcome, str):
             not_evaluated.append((record.nuclide, outcome))
         else:
             candidates.append(outcome)
     ranked = _with_interference(candidates)
     explained = {i for c in ranked for i in c.matched_peaks}
-    warnings = [LIMITATION]
+    warnings = [
+        LIMITATION,
+        "Lines are judged only against the peaks supplied: a line counts as missing when "
+        "no fitted peak was passed at its energy, so fit every peak of the spectrum first.",
+    ]
+    if len(set(groups)) < len(peaks):
+        warnings.append(
+            "some peaks are closer together than their energy uncertainties resolve; they "
+            "count as one peak"
+        )
     if settings.energy_range_kev is None:
         warnings.append(
             "the analysed energy range was taken as the span of the fitted peaks: lines "

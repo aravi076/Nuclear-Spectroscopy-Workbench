@@ -66,7 +66,8 @@ counts. Example time stamps in the format documentation carry a GMT+05:30 offset
 ## 5. Git history
 
 One initial commit on branch `main`, created in a freshly initialised repository. No
-earlier commit, branch or tag was copied. The commit identifier is recorded in the
+earlier commit, branch or tag was copied. Later commits are made in this repository
+from reviewed changes. The commit identifier is recorded in the
 private repository's copy of this report, since a file cannot contain the identifier
 of the commit that contains it. Author field: the owner's name with the GitHub no-reply address shown in the owner's
 GitHub e-mail settings; no personal address.
@@ -109,8 +110,8 @@ Run inside the public-candidate directory with its own fresh environment
 
 | Check | Result |
 |---|---|
-| `pytest` | 390 passed, 0 failed, 0 skipped (217 unit, 35 integration, 138 validation) |
-| Coverage of non-GUI code | 96 % |
+| `pytest` | 405 passed, 0 failed, 0 skipped (217 unit, 35 integration, 153 validation); at first publication 390 |
+| Coverage of non-GUI code | 97 % |
 | `ruff check`, `ruff format --check` | clean |
 | `mypy --strict` on `src/nsw` | clean (64 source files) |
 | `scripts/generate_synthetic.py` | wrote 12 synthetic spectra |
@@ -141,8 +142,9 @@ Experimental validation: none in this repository.
 1. Explicit approval of public visibility by the owner.
 2. Recommended before pushing: in GitHub e-mail settings switch on "Keep my email
    addresses private" and "Block command line pushes that expose my email".
-3. The independent review of the efficiency, activity and identification engines by a
-   second reviewer has not been completed.
+3. The independent review of the efficiency, activity and identification engines was
+   completed after first publication; its corrections are the second commit and its
+   open findings are in `docs/REVIEW_PHASE8_9.md`.
 4. Interface tests are programmatic; systematic manual testing is outstanding.
 
 ## 12. Publishing (after approval)

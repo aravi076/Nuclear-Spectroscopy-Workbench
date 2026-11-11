@@ -308,9 +308,19 @@ def fit_efficiency_curve(
     eff = np.array([p.efficiency for p in pts])
     if np.any(eff <= 0.0):
         raise ProcessingError("efficiencies must be positive")
+    if not next(iter(kinds)) and len({p.source for p in pts}) > 1:
+        raise ProcessingError(
+            "relative efficiency points of several separately normalised groups cannot be "
+            "fitted together: their scales are unrelated"
+        )
     v = point_covariance(pts)
     if np.any(np.diag(v) <= 0.0):
         raise ProcessingError("every efficiency point needs an uncertainty")
+    if np.linalg.cond(v) > 1e12:
+        raise ProcessingError(
+            "the covariance of the efficiency points is singular: every point needs an "
+            "uncertainty of its own (statistical or emission probability)"
+        )
     e0 = float(np.exp(np.mean(np.log(energies))))
     log = np.log(energies / e0)
     x = np.vstack([log**k for k in range(order + 1)]).T

@@ -164,8 +164,8 @@ Run of 2026-11-11 in this repository (Windows 11, CPython 3.12, fresh environmen
 
 | Check | Result |
 |---|---|
-| `pytest` | 390 passed, 0 failed, 0 skipped (217 unit, 35 integration, 138 validation) |
-| Coverage of non-GUI code | 96 % |
+| `pytest` | 405 passed, 0 failed, 0 skipped (217 unit, 35 integration, 153 validation) |
+| Coverage of non-GUI code | 97 % |
 | `ruff check`, `ruff format --check` | clean |
 | `mypy --strict` on `src/nsw` | clean |
 
@@ -178,6 +178,10 @@ Run of 2026-11-11 in this repository (Windows 11, CPython 3.12, fresh environmen
   private laboratory HPGe measurements as a check of file handling. Those measurements
   and the tests that read them are not part of this repository, and no physical
   reference value has been reproduced.
+
+An independent review of the efficiency, activity and nuclide-candidate code found
+and led to the correction of fifteen defects; what remains open is listed in
+[docs/REVIEW_PHASE8_9.md](docs/REVIEW_PHASE8_9.md).
 
 Numbers and methods: [VALIDATION_REPORT.md](VALIDATION_REPORT.md),
 [docs/scientific_methodology.md](docs/scientific_methodology.md).

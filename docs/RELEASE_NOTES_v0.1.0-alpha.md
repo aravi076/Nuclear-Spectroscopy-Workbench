@@ -27,8 +27,8 @@ producing measurement results.**
 
 ## Verification (2026-11-11, Windows 11, CPython 3.12)
 
-- 390 tests pass.
-- 96 % coverage of non-GUI code; Ruff and strict MyPy clean.
+- 405 tests pass.
+- 97 % coverage of non-GUI code; Ruff and strict MyPy clean.
 - Validation against hand calculations, independent numerical solutions and Monte
   Carlo ensembles of synthetic spectra: `VALIDATION_REPORT.md`.
 

@@ -78,7 +78,8 @@ def test_spectra_without_verified_calibration_are_refused() -> None:
     experimental = make_raw(np.full(200, 10))
     assert experimental.calibration_status is not CalibrationStatus.VERIFIED
     missing = ids.missing_inputs(experimental, real_like_library())
-    assert len(missing) == 1 and "verified energy calibration" in missing[0]
+    assert len(missing) == 2 and "verified energy calibration" in missing[0]
+    assert "not enabled for experimental spectra" in missing[1]
     assert "file or folder names cannot identify" in missing[0]
     with pytest.raises(ids.ProcessingError, match="verified energy calibration"):
         ids.identify(experimental, [], real_like_library())
