@@ -392,7 +392,7 @@ class CalibrationPage(QWidget):
         self.state.add_calibration(
             cal_service.CalibrationHistoryItem(
                 now, describe_entry(self._entries[self.spectrum_box.currentIndex()]),
-                s.is_synthetic, self.record, fit,
+                s.is_synthetic, self.record, fit, s.data_sha256,
             )
         )  # fmt: skip
         self._update_enabled()

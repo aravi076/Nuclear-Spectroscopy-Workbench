@@ -17,7 +17,22 @@
 
 ### Added
 
-- 15 regression tests (405 in total).
+- 15 regression tests for the review findings.
+- Consolidated synthetic validation (`scripts/run_validation.py`): checked metrics with
+  five-standard-error criteria, characterised limitations, bit-identical repeatability.
+- Project files (SQLite): spectra, background designations, calibrations and every result
+  with settings and software version; append-only; fits and calibrations recomputed and
+  checked when a project is reopened. Project File page and File menu actions.
+- Efficiency Calibration, Activity Calculation and Nuclide Identification pages; experimental
+  spectra are refused with the list of missing inputs. Generated spectra of the fictitious
+  sources SYN-CAL and SYN-X.
+- PDF analysis reports and SVG/PDF/PNG figures; identical input gives identical files.
+- Windows executable (PyInstaller, one folder) and `--self-test`.
+- External dataset survey; post-v1 roadmap.
+
+### Changed
+
+- Fit results record their starting values, so stored fits are reproduced exactly.
 
 ## 0.1.0a1 (v0.1.0-alpha) - 2026-11-11
 

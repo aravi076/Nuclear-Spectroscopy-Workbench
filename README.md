@@ -3,8 +3,8 @@
 NSW is a Windows desktop application and Python library for analysing gamma-ray
 spectra from HPGe and NaI(Tl) detectors.
 
-**Status: alpha (`v0.1.0-alpha`).** The calculation engines are tested against
-synthetic spectra with known ground truth. Nothing in this repository is an
+**Status: development towards v1.0 (`0.9.0.dev0`; last release `v0.1.0-alpha`).**
+The calculation engines are tested against synthetic spectra with known ground truth. Nothing in this repository is an
 experimentally validated measurement result; see
 [Scientific limitations](#scientific-limitations).
 
@@ -43,14 +43,17 @@ NSW aims to make that chain explicit and checkable:
 | Peak fitting (Poisson likelihood, least squares, joint gross + background; covariance, goodness of fit, multiplet evidence) | yes | yes: Peak Fitting |
 | Energy calibration (effective-variance regression, order test, valid range, position stability) | yes | yes: Energy Calibration |
 | Detector resolution model FWHM² = a + bx + cx² | yes | yes: Resolution Analysis |
-| Decay correction, full-energy-peak efficiency curve, activity | yes, on synthetic sources only | **no page yet** |
-| Nuclide candidates ranked against a reference library | yes, with a fictitious test library only | **no page yet** |
+| Decay correction, full-energy-peak efficiency curve, activity | yes, on synthetic sources only | yes: Efficiency Calibration, Activity Calculation (refused for experimental spectra, with the list of missing inputs) |
+| Nuclide candidates ranked against a reference library | yes, with a fictitious test library only | yes: Nuclide Identification (candidates with evidence, never an identification) |
 | Synthetic spectrum generator with stored ground truth (HPGe-like and NaI-like) | yes | generated files can be opened |
-| Project database, reports, Windows executable | **not implemented** | **not implemented** |
+| Project file (SQLite, append-only history, fits reproduced on reopening) | yes | yes: Project File |
+| PDF analysis reports; SVG, PDF or PNG figures | yes | File menu |
+| Consolidated synthetic validation with pass criteria and repeatability | yes (`scripts/run_validation.py`) | — |
+| Windows executable with end-to-end self-test | yes (`packaging/nsw.spec`, `NSW.exe --self-test`) | — |
 
 A "calculation engine" is a tested module that can be called from Python. A "desktop
-page" is reachable in the application; the seven pages are exercised by automated
-interface tests, not yet by systematic manual testing.
+page" is reachable in the application; the eleven pages are exercised by automated
+interface tests and the self-test, not yet by systematic manual testing.
 
 ## Screenshots
 
@@ -71,10 +74,12 @@ interface tests, not yet by systematic manual testing.
 | Pydantic | validated records (calibrations, settings, nuclear-data model) |
 | PyYAML | settings file |
 | PySide6 (Qt for Python), PyQtGraph | desktop interface, interactive plots |
+| SQLite (Python standard library) | project files |
+| Matplotlib | PDF reports and figures |
+| PyInstaller | Windows executable |
 | pytest, pytest-cov, Ruff, MyPy (strict) | tests, lint, static types |
 
-Declared as dependencies but not used by the code yet: pandas, Matplotlib (planned for
-reports). Planned and not present: SQLite project storage, PyInstaller packaging.
+Declared as a dependency but not used by the code: pandas (to be removed).
 
 ## Architecture
 
@@ -140,6 +145,16 @@ Create example spectra and start the application:
    for fitted peaks, then *Fit calibration*. Calibrations of measured spectra are
    stored as provisional; spectra stay in channel units until a calibration is verified.
 7. **Resolution.** *Resolution Analysis*: *Fit resolution model* to the fitted widths.
+8. **Efficiency and activity.** Open `data\synthetic\sources`, fit the peaks of
+   `syn-cal-source` and `syn-x-sample`, then use *Efficiency Calibration* and *Activity
+   Calculation* with the fictitious sources SYN-CAL and SYN-X.
+9. **Nuclide candidates.** *Nuclide Identification* ranks library nuclides against the
+   fitted peaks of a calibrated spectrum.
+10. **Save and report.** *File → New project…*, *Save session to project*; *File → Export
+    analysis report (PDF)…*.
+
+`python -m nsw.ui.app --self-test FOLDER` (or `NSW.exe --self-test FOLDER`) runs the whole
+workflow on generated spectra and writes `FOLDER\selftest.log`.
 
 Full guide: [docs/user_manual.md](docs/user_manual.md).
 
@@ -160,11 +175,11 @@ for outcome in fit_candidates(spectrum, search):
 
 ## Testing and validation
 
-Run of 2026-11-11 in this repository (Windows 11, CPython 3.12, fresh environment):
+Run of 2026-11-12 in this repository (Windows 11, CPython 3.12, fresh environment):
 
 | Check | Result |
 |---|---|
-| `pytest` | 405 passed, 0 failed, 0 skipped (217 unit, 35 integration, 153 validation) |
+| `pytest` | 430 passed, 0 failed, 0 skipped (231 unit, 41 integration, 158 validation) |
 | Coverage of non-GUI code | 97 % |
 | `ruff check`, `ruff format --check` | clean |
 | `mypy --strict` on `src/nsw` | clean |
@@ -205,7 +220,8 @@ Numbers and methods: [VALIDATION_REPORT.md](VALIDATION_REPORT.md),
 - **Nuclear-data integration is pending.** NSW ships no decay data; the identification
   engine is tested with an explicitly fictitious library. Real data (DDEP, ENSDF) must
   be imported by the user with their provenance ([docs/nuclear_data.md](docs/nuclear_data.md)).
-- Analysis results are not saved between sessions.
+- The executable is built and self-tested but not yet installed on a separate clean
+  machine, and is not distributed (LGPL texts must be added first).
 
 ## Roadmap
 
@@ -214,11 +230,12 @@ Numbers and methods: [VALIDATION_REPORT.md](VALIDATION_REPORT.md),
 | Data model, importers, identity and integrity | done |
 | Spectrum viewer, background subtraction | done |
 | Peak search and fitting, energy calibration, resolution | done (engine and page) |
-| Efficiency, activity, nuclide candidates | engines done; pages pending |
-| Validation runner, project database, reports | pending |
-| Windows executable, external benchmark datasets | pending |
+| Efficiency, activity, nuclide candidates | done (engines and pages; synthetic data only) |
+| Validation runner, project database, reports | done |
+| Windows executable | built and self-tested; clean-machine installation pending |
+| External benchmark datasets | surveyed (`docs/external_dataset_discovery.md`); none adopted yet |
 
-Details: [docs/ROADMAP.md](docs/ROADMAP.md). Changes: [CHANGELOG.md](CHANGELOG.md).
+Details: [docs/ROADMAP.md](docs/ROADMAP.md), [docs/POST_V1_ROADMAP.md](docs/POST_V1_ROADMAP.md). Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## Documentation
 

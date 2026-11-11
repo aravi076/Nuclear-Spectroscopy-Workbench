@@ -13,8 +13,10 @@ synthetic.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from nsw.analysis.activity import ActivityResult, LineActivity, combine_lines, line_activity
 from nsw.analysis.efficiency import (
@@ -29,21 +31,32 @@ from nsw.analysis.efficiency import (
 from nsw.core.calibration import CalibrationStatus
 from nsw.core.errors import ProcessingError
 from nsw.core.spectrum import Spectrum
+from nsw.services.identification import observed_peaks
+from nsw.services.peaks import FitResult
+from nsw.simulation import sources
 
 __all__ = [
     "EXPERIMENTAL_QUANTIFICATION_ENABLED",
     "ActivityResult",
     "EfficiencyCurve",
     "EfficiencyPoint",
+    "FictitiousSource",
     "GammaLine",
+    "LineArea",
     "MeasurementTiming",
     "ProcessingError",
     "ReferenceSource",
     "activity",
+    "activity_rows",
     "curve_rows",
     "efficiency_curve",
+    "fictitious_sources",
+    "line_rows",
+    "match_lines",
     "missing_inputs",
     "result_label",
+    "start_time_for",
+    "suggested_start_days",
     "timing_of",
 ]
 
@@ -159,4 +172,122 @@ def curve_rows(spectrum: Spectrum, curve: EfficiencyCurve) -> Rows:
         value, rel, _ = curve.efficiency(energy)
         rows.append((f"ε at {energy:.1f} keV", f"{value[0]:.4g} ± {100 * rel[0]:.2g} %"))
     rows.extend(("Caution", w) for w in curve.warnings)
+    return rows
+
+
+# ---------------------------------------------------------------------- page support
+@dataclass(frozen=True)
+class FictitiousSource:
+    """A fictitious test source: certificate-like data and its lines (not nuclear data)."""
+
+    name: str
+    source: ReferenceSource
+    lines: tuple[GammaLine, ...]
+
+
+def fictitious_sources() -> dict[str, FictitiousSource]:
+    out = {}
+    for s in (sources.SYN_CAL, sources.SYN_X):
+        reference = ReferenceSource(
+            s.name,
+            s.activity_bq,
+            0.0,
+            s.reference_time,
+            s.half_life_s,
+            0.0,
+            "fictitious test source (TD-039); not a certificate",
+            synthetic=True,
+        )
+        lines = tuple(
+            GammaLine(ln.energy_kev, ln.emission_probability, 0.0, "fictitious test line")
+            for ln in s.lines
+        )
+        out[s.name] = FictitiousSource(s.name, reference, lines)
+    return out
+
+
+def suggested_start_days(spectrum: Spectrum) -> float:
+    """Days between the fictitious source reference time and a synthetic measurement."""
+    return sources.SOURCE_SCENARIO_DAYS.get(spectrum.synthetic_id or "", 0.0)
+
+
+def start_time_for(spectrum: Spectrum, days_after_reference: float) -> datetime:
+    """Start of a synthetic measurement (it carries no time) or of a measured one."""
+    if spectrum.is_synthetic:
+        return sources.REFERENCE_TIME + timedelta(days=days_after_reference)
+    if spectrum.start_time is None:
+        raise ProcessingError("the measurement has no start time")
+    return spectrum.start_time
+
+
+@dataclass(frozen=True, slots=True)
+class LineArea:
+    line: GammaLine
+    area: float
+    area_unc: float
+    peak_energy_kev: float  # NaN when no fitted peak matches
+
+    @property
+    def matched(self) -> bool:
+        return math.isfinite(self.peak_energy_kev)
+
+
+def match_lines(
+    spectrum: Spectrum, fits: Sequence[FitResult], lines: Sequence[GammaLine], k: float = 3.0
+) -> list[LineArea]:
+    """The fitted peak area for each line: the nearest fitted peak whose energy agrees
+    within k combined standard uncertainties (position and calibration). Needs a
+    verified energy calibration, like the nuclide candidates."""
+    if any(f.spectrum_sha256 != spectrum.data_sha256 for f in fits):
+        raise ProcessingError("the fitted peaks belong to a different spectrum")
+    peaks = observed_peaks(spectrum, fits)
+    out = []
+    for line in lines:
+        best = None
+        for p in peaks:
+            sigma = math.hypot(p.position_unc_kev, p.calibration_unc_kev)
+            delta = abs(p.energy_kev - line.energy_kev)
+            if delta <= k * sigma + 1e-9 and (best is None or delta < best[0]):
+                best = (delta, p)
+        if best is None:
+            out.append(LineArea(line, math.nan, math.nan, math.nan))
+        else:
+            p = best[1]
+            out.append(LineArea(line, p.area, p.area_unc, p.energy_kev))
+    return out
+
+
+def line_rows(spectrum: Spectrum, matches: Sequence[LineArea]) -> tuple[list[str], list[list[str]]]:
+    headers = ["Line (keV)", "Photons per decay", "Fitted peak (keV)", "Area", "±", "Used"]
+    rows = []
+    for m in matches:
+        rows.append(
+            [
+                f"{m.line.energy_kev:.2f}",
+                f"{m.line.emission_probability:.4g}",
+                f"{m.peak_energy_kev:.3f}" if m.matched else "no fitted peak",
+                f"{m.area:.6g}" if m.matched else "—",
+                f"{m.area_unc:.3g}" if m.matched else "—",
+                "yes" if m.matched else "no",
+            ]
+        )
+    return headers, rows
+
+
+def activity_rows(spectrum: Spectrum, result: ActivityResult) -> Rows:
+    q = result.activity
+    rows: Rows = [
+        ("Status", result_label(spectrum)),
+        (
+            "Activity",
+            f"{q.value:.6g} Bq ± {q.uncertainty:.3g} Bq (stat {q.stat:.3g}, sys {q.sys:.3g})",
+        ),
+        ("Reference time", result.reference_time.isoformat(sep=" ")),
+        (
+            "Consistency of lines",
+            f"χ² = {result.chi2:.2f} for {result.ndf} degrees of freedom"
+            + ("" if result.consistent else " — NOT consistent with one activity"),
+        ),
+    ]
+    rows.extend(("Caution", w) for w in result.warnings)
     return rows

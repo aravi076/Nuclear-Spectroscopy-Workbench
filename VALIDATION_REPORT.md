@@ -12,7 +12,7 @@ Three categories are kept strictly apart:
    handling; they are **not** a validation of detector physics, and no physical
    reference value has been reproduced yet.
 
-Test run of record: 405 tests, all passing (217 unit, 35 integration, 153 validation);
+Test run of record: 430 tests, all passing (231 unit, 41 integration, 158 validation);
 97 % statement coverage of the non-GUI code. Tests that read private laboratory
 measurements are not part of this repository.
 
@@ -214,6 +214,51 @@ Compton edges and other structure that also produce candidates.
 
 NaI(Tl): only the synthetic NaI-like model has been exercised. **There is no
 experimental NaI(Tl) validation of any kind.**
+
+### Nuclide candidates (Phase 9; fictitious library only)
+
+`tests/validation/test_identification.py`, `test_review_findings.py`. References: hand
+values of the energy window (3σ = 0.1122 keV for u_peak 0.02, u_line 0.01, u_cal 0.03),
+a closed form for the two-line intensity test, and the synthetic truth. Checked: the
+true nuclide ranks first; one coincident line never exceeds "possible"; a missing
+strong line lowers class and score; a wider calibration uncertainty widens the window;
+decoys with two coincident lines are separated only with an efficiency curve; relative
+intensities give energy evidence only; conflicting and incomplete libraries are
+refused or reported. Corrections after the independent review: `docs/REVIEW_PHASE8_9.md`.
+
+### Consolidated run (Phase 10)
+
+`scripts/run_validation.py --trials 1000 --repeat` (about 3.5 minutes) runs every engine
+on generated spectra and writes `reports/validation_run.md` and `.json`. Metrics and
+criteria are defined in `nsw.services.validation_suite`: relative bias within 5
+standard errors, 1σ coverage within 5 binomial standard errors of 0.6827, required
+rates exactly met. Run of 2026-11-11, seed 50000, nsw 0.0.1, NumPy 2.5.4:
+**24 checked metrics, 0 failed**; digest `54ca82c8…6ab228`.
+
+| Study | Metric | Value | Criterion |
+|---|---|---|---|
+| Peak search, 200 counts on 20/channel | detection probability | 1.000 | ≥ 0.99 |
+| Peak search, peak-free spectra | false candidates per 1000 channels | 0.005 | ≤ 0.1 |
+| Peak fit, high count | area relative bias / coverage | +0.004 % / 0.674 | 0 ± 0.12 % / 0.683 ± 0.074 |
+| Peak fit, medium count | area relative bias / coverage | −0.02 % / 0.682 | 0 ± 1.0 % / 0.683 ± 0.074 |
+| Peak fit, low count, fixed shape | area relative bias / coverage | +1.0 % / 0.682 | 0 ± 3.4 % / 0.683 ± 0.074 |
+| Energy calibration, 8 lines | gain relative bias | −2.6 × 10⁻⁸ | 0 ± 2.4 × 10⁻⁷ |
+| Energy calibration | gain / offset coverage | 0.663 / 0.659 | 0.683 ± 0.074 |
+| Energy calibration | fits with p < 0.05 | 0.038 | 0.05 ± 0.034 |
+| Resolution FWHM² = a + bE | a / b coverage | 0.693 / 0.699 | 0.683 ± 0.074 |
+| Efficiency curve and activity, full chain (250) | activity relative bias / coverage | +0.008 % / 0.668 | 0 ± 0.08 % / 0.683 ± 0.147 |
+| Nuclide candidates with decoys (250) | true nuclide first / decoys accepted | 250 of 250 / 0 | exactly all / none |
+| Repeatability | same seed | bit-identical | equal SHA-256 |
+| Repeatability | another seed (1050000) | 0 failures | none |
+
+Characterised, not checked (known limitations): free-shape fits of weak peaks are
+biased high (+3.4 % ± 0.7 % for 30 counts on 0.6 per channel; +8.5 % ± 1.3 % for 300
+counts on 400 per channel, failure rate 2.3 %); a 100-count peak on 20 counts per
+channel is found in 90.6 % ± 0.9 % of spectra at threshold 4.
+
+The earlier "5 σ at better than 1 %" statement was reviewed in Phase 5 and reproduced
+(400 413 ± 648 against 400 000); it describes one high-count synthetic case and is not
+a general sensitivity claim.
 
 ## 3. Experimental observations
 

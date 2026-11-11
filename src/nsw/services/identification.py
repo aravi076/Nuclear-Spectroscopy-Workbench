@@ -26,6 +26,7 @@ import nsw
 from nsw.analysis.efficiency import EfficiencyCurve
 from nsw.analysis.fitting import FitResult
 from nsw.analysis.identification import (
+    LIMITATION,
     Candidate,
     Confidence,
     IdentificationResult,
@@ -47,6 +48,7 @@ from nsw.simulation.reference import fictitious_library
 
 __all__ = [
     "DEFAULT_PREFERENCE",
+    "LIMITATION",
     "Candidate",
     "Confidence",
     "IdentificationResult",

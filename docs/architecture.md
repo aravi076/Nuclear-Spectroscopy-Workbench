@@ -68,13 +68,15 @@ editing existing code. Import never writes to the source directory.
 
 ## Persistence (`nsw.database`)
 
-One SQLite file per NSW project in the user workspace. Tables: `project`, `detector`,
-`spectrum` (metadata + file hash + path, counts stored as a compressed blob so a project
-can be reopened if the source moves), `calibration` (append-only history),
-`analysis_run` (settings JSON, software version, input hashes), `peak`, `activity_result`,
-`reference_dataset` (source, version, retrieval date), `audit_log`. Results are
-append-only: re-running creates a new `analysis_run`; nothing is overwritten. Schema
-version table plus timestamped backup copy before any migration.
+As built (Phase 11): one SQLite file per project (`nsw.database.store`), application id
+`NSW1`, schema version 1. Tables `project`, `measurement` (complete spectrum record,
+counts and variance as compressed NumPy arrays, data hash checked on every read),
+`background_event` (designations and removals as an event log), `calibration`
+(validated records), `analysis_run` (kind, spectrum, settings, result, software,
+synthetic flag), `reference_dataset`, `audit_log`. Triggers abort UPDATE and DELETE on
+all result tables. A newer schema is refused; an older one is backed up before
+migration. The store keeps JSON produced by `nsw.services.project`, which also
+reproduces stored fits and calibrations when a project is reopened.
 
 ## Nuclear reference data
 
@@ -108,10 +110,11 @@ exported figures.
 | `nsw.io` | `base`, `lynx_csv`, `lynx_ava`, `canberra_cnf`, `nsw_synthetic`, `registry`, `identity`, `integrity`, `reference_data` |
 | `nsw.analysis` | `background`, `peaks` (search), `fitting` (Gaussian fits, multiplet evidence), `energy_calibration` (regression, order test, stability), `resolution` (FWHM model), `decay`, `efficiency`, `activity`, `identification` |
 | `nsw.simulation` | `generator`, `presets`, `sources` (fictitious sources and efficiency), `reference` (fictitious library) |
-| `nsw.services` | `dataset`, `describe`, `export`, `background`, `integrity`, `peaks`, `calibration`, `resolution`, `efficiency` (gate for experimental data), `identification` (calibration gate), `validation` (Monte Carlo studies) |
-| `nsw.ui` | `app`, `main_window`, `state`, `workers`, `plot`, `fit_plot`, `tables`, `dashboard`, `explorer`, `background_page`, `peak_search_page`, `peak_fit_page`, `calibration_page`, `resolution_page` |
+| `nsw.services` | `dataset`, `describe`, `export`, `background`, `integrity`, `peaks`, `calibration`, `resolution`, `efficiency` (gate for experimental data), `identification` (calibration gate), `validation`, `validation_suite`, `project`, `report`, `selftest_data` (Monte Carlo studies) |
+| `nsw.ui` | `app`, `main_window`, `state`, `workers`, `plot`, `fit_plot`, `tables`, `dashboard`, `explorer`, `background_page`, `peak_search_page`, `peak_fit_page`, `calibration_page`, `resolution_page`, `quantification_page`, `identification_page`, `project_page`, `selftest` |
 | `nsw.config` | settings (outside the layers) |
-| `nsw.database`, `nsw.reporting` | empty; not started |
+| `nsw.database` | `store` (SQLite project file) |
+| `nsw.reporting` | `document` (PDF reports, SVG/PDF/PNG figures) |
 
 Peak results are plain result objects (`PeakCandidate`, `FitResult`) defined in
 `nsw.analysis`, not in `core` as proposed in Phase 0; they move to `core` only if the

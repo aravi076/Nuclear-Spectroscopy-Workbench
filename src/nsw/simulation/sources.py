@@ -20,11 +20,12 @@ import the analysis layer; the validation tests compare the two).
 from __future__ import annotations
 
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from nsw.simulation.generator import SyntheticLine
+from nsw.simulation import presets
+from nsw.simulation.generator import SyntheticLine, SyntheticSpec
 
 LN2 = math.log(2.0)
 
@@ -129,3 +130,40 @@ SYN_X = SyntheticSource(
         SyntheticNuclideLine(energy_kev=1250.0, emission_probability=0.20),
     ),
 )
+
+
+# ---------------------------------------------------------------------- spectra
+#: days between the source reference time and the start of each fictitious measurement
+SOURCE_SCENARIO_DAYS: dict[str, float] = {"syn-cal-source": 40.0, "syn-x-sample": 10.0}
+
+
+def source_scenarios() -> tuple[SyntheticSpec, ...]:
+    """Spectra of the fictitious sources for the efficiency and activity pages.
+
+    The measurement of SYN-CAL starts 40 days, that of SYN-X 10 days after the
+    reference time of the sources (``REFERENCE_TIME``); synthetic spectra carry no start
+    time, so the pages ask for this offset.
+    """
+    out = []
+    for name, source, live, seed in (
+        ("syn-cal-source", SYN_CAL, 20000.0, 3001),
+        ("syn-x-sample", SYN_X, 5000.0, 3002),
+    ):
+        days = SOURCE_SCENARIO_DAYS[name]
+        start = REFERENCE_TIME + timedelta(days=days)
+        out.append(
+            SyntheticSpec(
+                synthetic_id=name,
+                live_time_s=live,
+                real_time_s=live,
+                seed=seed,
+                lines=line_rates(source, SYNTHETIC_EFFICIENCY, start, live, continuum_ratio=1.0),
+                background=presets.HPGE_BACKGROUND,
+                description=(
+                    f"Fictitious source {source.name} measured {days:g} days after its "
+                    "reference time; arbitrary test values, not nuclear data."
+                ),
+                **presets.HPGE_BASE,
+            )
+        )
+    return tuple(out)

@@ -1,3 +1,3 @@
 """Nuclear Spectroscopy Workbench (NSW)."""
 
-__version__ = "0.1.0a1"
+__version__ = "0.9.0.dev0"

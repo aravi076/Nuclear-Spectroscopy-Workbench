@@ -9,6 +9,7 @@ from PySide6.QtCore import QObject, Signal
 from nsw.core.spectrum import MeasurementStatus, Spectrum
 from nsw.services.calibration import CalibrationHistoryItem
 from nsw.services.dataset import DatasetScan
+from nsw.services.efficiency import EfficiencyCurve
 from nsw.services.peaks import FitResult, PeakSearchResult
 
 
@@ -47,6 +48,7 @@ class AppState(QObject):
     peaks_changed = Signal(str)  # data hash of the spectrum whose search changed
     fits_changed = Signal(str)  # data hash of the spectrum whose fits changed
     calibrations_changed = Signal()
+    efficiency_changed = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -56,6 +58,7 @@ class AppState(QObject):
         self._peak_searches: dict[str, PeakSearchResult] = {}  # data hash -> latest search
         self._fits: dict[str, list[FitResult]] = {}  # data hash -> fits, by region
         self.calibration_history: list[CalibrationHistoryItem] = []
+        self.efficiency: tuple[str, EfficiencyCurve] | None = None  # (spectrum hash, curve)
 
     # ---- scans
     def set_experimental(self, scan: DatasetScan) -> None:
@@ -112,6 +115,11 @@ class AppState(QObject):
     def add_calibration(self, item: CalibrationHistoryItem) -> None:
         self.calibration_history.append(item)
         self.calibrations_changed.emit()
+
+    # ---- efficiency curve (latest; used by the activity page)
+    def set_efficiency(self, key: str, curve: EfficiencyCurve) -> None:
+        self.efficiency = (key, curve)
+        self.efficiency_changed.emit()
 
     # ---- background designation (analyst decision, never inferred from file names)
     def designate_background(self, spectrum: Spectrum, note: str = "designated in NSW") -> None:

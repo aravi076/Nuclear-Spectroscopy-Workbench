@@ -186,6 +186,9 @@ class FitResult:
     spectrum_sha256: str
     is_synthetic: bool
     settings: FitSettings
+    # the inputs the fit started from: with ``settings`` they reproduce the fit exactly
+    initial_centroids: tuple[float, ...] = ()
+    initial_fwhm: tuple[float, ...] = ()
 
     @property
     def n_peaks(self) -> int:
@@ -644,6 +647,7 @@ def _build_result(
     settings: FitSettings,
     extra_warnings: Sequence[str] = (),
     net: Float | None = None,
+    initial: tuple[Sequence[float], Sequence[float]] = ((), ()),
 ) -> FitResult:
     theta = sol.theta
     names = layout.names()
@@ -806,6 +810,8 @@ def _build_result(
         spectrum_sha256=spectrum.data_sha256,
         is_synthetic=spectrum.is_synthetic,
         settings=settings,
+        initial_centroids=tuple(float(c) for c in initial[0]),
+        initial_fwhm=tuple(float(w) for w in initial[1]),
     )
 
 
@@ -888,6 +894,7 @@ def fit_peaks(
         residual_variance="information" if method is FitMethod.WLS else "expectation",
         settings=settings,
         extra_warnings=extra,
+        initial=(centroids, fwhm),
     )
 
 
@@ -958,6 +965,7 @@ def fit_peaks_joint(
         settings=settings,
         extra_warnings=extra,
         net=net,
+        initial=(centroids, fwhm),
     )
 
 
