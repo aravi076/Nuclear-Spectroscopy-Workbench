@@ -1,0 +1,9 @@
+# Copy to config/local.yaml (git-ignored) and edit. Paths are personal; never commit them.
+paths:
+  # Read-only laboratory datasets. NSW never writes inside these directories.
+  experimental_roots:
+    - "D:/path/to/experimental/dataset"
+  # Where NSW projects (SQLite), derived spectra and backups are written.
+  workspace: "D:/path/to/nsw-workspace"
+  # SHA-256 manifest directory used for integrity checks of experimental roots.
+  manifests: "local"

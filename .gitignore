@@ -1,0 +1,52 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Build / packaging
+build/
+dist/
+
+# Local, personal and laboratory-private material (never commit)
+local/
+config/local.yaml
+*.sqlite
+*.sqlite3
+*.db
+*.nswproj/
+
+# Experimental spectra must never enter the repository.
+# (Synthetic fixtures use the .csv/.json formats under tests/fixtures and data/synthetic.)
+*.cnf
+*.CNF
+*.ava
+*.AVA
+*.chn
+*.CHN
+*.spe
+*.SPE
+*.mca
+*.MCA
+data/experimental/
+
+# Generated outputs
+reports/*
+!reports/.gitkeep
+data/synthetic/**/*.json
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*.tmp
+*.log
+
+# Graphify knowledge graph (local only)
+graphify-out/

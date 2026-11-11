@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Nuclear Spectroscopy Workbench (NSW)"
+type: software
+authors:
+  - name: "Aravind Loshana A"
+version: "0.1.0a1"
+license: MIT
+date-released: "2026-11-11"
+abstract: >-
+  Desktop application and Python library for gamma-ray spectroscopy analysis:
+  spectrum import, background subtraction, peak search and fitting, energy and
+  resolution calibration, with engines for efficiency, activity and nuclide
+  candidates validated on synthetic data.
+keywords:
+  - gamma-ray spectroscopy
+  - HPGe
+  - peak fitting
+  - energy calibration
