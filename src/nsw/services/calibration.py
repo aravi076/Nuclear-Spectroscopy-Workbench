@@ -94,6 +94,7 @@ class CalibrationHistoryItem:
     synthetic: bool
     record: EnergyCalibration
     fit: CalibrationFit
+    data_sha256: str = ""  # spectrum the calibration was fitted on
 
 
 def peak_rows(fits: Iterable[FitResult]) -> list[PeakRow]:

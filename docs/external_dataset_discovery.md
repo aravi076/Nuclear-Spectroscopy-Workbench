@@ -1,74 +1,80 @@
-# External Open-Data Discovery Plan
+# External Dataset Survey
 
-Status: plan plus first leads (2026-11-10). **Nothing has been downloaded, imported or
-relied upon.** Every entry below is an unverified lead from a brief literature/web
-search; the "to verify" column lists what must be confirmed before any use.
+Status: survey of 2026-11-12 (Phase 12), extending the leads of 2026-11-10.
+**Nothing has been downloaded, imported or relied upon.** Each entry records what the
+official page states and what remains unverified. Several official pages refused
+automated access (HTTP 402/403); for those the information comes from search-engine
+summaries of the page and is marked *(not read directly)*. Every such entry must be
+checked in a browser before use.
 
 ## Why external data
 
-1. Experimental NaI(Tl) spectra: the laboratory dataset has none.
-2. HPGe spectra with *documented* source activities and geometry, to test efficiency and
-   activity code that the laboratory dataset cannot exercise.
-3. Additional file formats (SPE, CHN, N42, …) to justify new import adapters.
+1. **No experimental NaI(Tl) spectra exist in NSW.** NaI(Tl) support is tested on
+   simulations only.
+2. HPGe spectra with documented sources, geometry and reference values would test peak
+   areas, efficiency and activity against independent results; the laboratory dataset
+   lacks certificates and geometry.
+3. New file formats justify new import adapters only after real files are inspected.
 
-## Acceptance criteria for a dataset
+## Acceptance criteria
 
-A dataset may be used only if all of the following are recorded in
-`data/reference/external/<name>/PROVENANCE.md`:
+A dataset may be used only when `data/reference/external/<name>/PROVENANCE.md` (outside
+Git) records: persistent identifier and repository; authors and publication; a licence
+that permits the use and its citation text; detector type and specification;
+**measured or simulated** (simulated data stay in the synthetic category); file format
+verified against a second reader or a published specification; acquisition metadata
+(live/real time, date, source identity) and, for quantitative use, activity, reference
+date, uncertainty and geometry; retrieval date and SHA-256 of every file. External data
+are never committed and are labelled by origin in the application.
 
-- persistent identifier (DOI) and repository; authors; associated publication;
-- licence that permits the intended use (CC BY / CC0 or equivalent); citation text;
-- detector type and, ideally, model and crystal size;
-- whether spectra are **measured or simulated** (simulated data stay in the synthetic
-  category);
-- file format, with the format documented or verifiable against a second parser;
-- acquisition metadata: live/real time, date, source identity; for quantitative use
-  also activity, reference date, uncertainty and geometry;
-- retrieval date and SHA-256 of every file retrieved.
+## Candidates
 
-External data are stored outside Git, separately from both the laboratory data and
-NSW's synthetic data, and are labelled by origin in the application.
+| Dataset | Official source | Detector | Measured / simulated | Format | Source and geometry metadata | Calibration information | Licence and redistribution | Possible benchmarking role |
+|---|---|---|---|---|---|---|---|---|
+| IAEA International Database of Reference Gamma Spectra (IDB), described in *Scientific Data* (2025): 551 spectra of U, Pu and MOX materials, grouped by quality, material, detector and gain | [nds.iaea.org/idb](https://nds.iaea.org/idb); paper [PMC12660317](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12660317/) | several; LaBr₃(Ce) and CZT confirmed by a JRC record; HPGe and NaI(Tl) coverage *not confirmed* | measured | not verified; metadata queryable, programmatic API stated | source information, measurement configuration and detector specification queryable *(not read directly)* | not verified | site states CC BY 4.0 for data and metadata unless stated otherwise, and asks to cite the database and data authors *(not read directly)*; an earlier version required registration | Most promising: real spectra with documented detectors under an open licence. Uses: peak search and fitting on real line shapes (tails, multiplets of U/Pu X-ray and gamma regions), format adapters. Not suitable for efficiency or activity (no calibration sources). |
+| IAEA test spectra for intercomparison of gamma-spectrometry software (1995/1998 set built from a Ra-226 spectrum; 2002 low-level set with Marinelli and pillbox geometries, e.g. MARITSMALL, PITBIG, MIX1EQ, MIX1NEQ) | publications: NIM A 2005 (DOI 10.1016/j.nima.2004.10.012) and earlier; no current download page found | HPGe | measured, with reference values | not verified | geometry and certified sources for the 2002 set *(per publications)* | calibration spectra included *(per publications)* | not established; obtainable only by request to the IAEA or the authors | The recognised benchmark for peak areas, uncertainties and activities. Highest value for NSW if a copy and permission can be obtained. |
+| Timestamped list-mode data from coincidence γ-ray spectrometry with HPGe detectors on air-filter samples, *Data in Brief* (2025) | [PubMed 40677253](https://pubmed.ncbi.nlm.nih.gov/40677253/) | HPGe array | measured | list mode (new format) | air-filter samples | not verified | not verified (journal is open access; data licence not read) | List-mode handling and coincidence studies; outside NSW's current scope. |
+| Example gamma spec peaks, Zenodo 10.5281/zenodo.3911859 (2020), T. Stainer | [zenodo.org/record/3911859](https://zenodo.org/record/3911859) | germanium ("HGe"); model not stated | both: real and Geant4, in separate files | CSV, rows of 13 bins | none: "sources and energies are hidden" | none | **CC BY 4.0 (read directly)** | Peak/no-peak classification snippets only; not full spectra. Limited role (detection tests on real noise); no physics reference values. |
+| Gamma-ray spectra templates for source interdiction and uranium enrichment, Illinois Data Bank IDB-4860767 | [databank.illinois.edu/datasets/IDB-4860767](https://databank.illinois.edu/datasets/IDB-4860767) | NaI(Tl) (tagged) | not established | not verified | not verified | not verified | CC BY *(not read directly)* | Possible NaI(Tl) line-shape data, if measured. Built for machine learning. |
+| Synthetic urban gamma-ray spectra (RADAI), Dryad 10.7941/D1XC97 (2023) | [datadryad.org](https://datadryad.org/dataset/doi:10.7941/D1XC97) | simulated 2×4×16-inch NaI(Tl) | **simulated** | HDF5, 2.32 GB | simulated urban scenes | — | Dryad states content is licensed for reuse (no specific licence named on the page) | Synthetic category only: large-scale NaI(Tl) detection tests. |
+| Open benchmark for γ-spectrometry analysis, arXiv 2508.08306 (2025) | [arxiv.org/abs/2508.08306](https://arxiv.org/abs/2508.08306) | simulated 3×3-inch NaI(Tl) | **simulated** (experimental background) | not verified | nine radionuclides | — | not verified | Synthetic category only: identification benchmark. |
+| INL Gamma-Ray Spectrum Catalogue (Ge and NaI(Tl) editions, after R. L. Heath) | [gammaray.inl.gov](https://gammaray.inl.gov/SitePages/catalog_ge.aspx) | HPGe and NaI(Tl) | measured | catalogue plots; availability of digital spectra not verified | per-nuclide source spectra *(per catalogue description)* | not verified | not verified (pages refused automated access) | Visual reference for line shapes and Compton features; quantitative use only if digital spectra and terms are confirmed. |
+| Mendeley Data ftcsyc4ygr | [data.mendeley.com/datasets/ftcsyc4ygr](https://data.mendeley.com/datasets/ftcsyc4ygr) | portable internal-contamination monitor | measured *(per search summary)* | not verified | Cs-137, Co-60 | not verified | licence not confirmed | Low: not a laboratory spectrometer. |
+| Mendeley Data xmmgbrfgnb | Mendeley Data | LaBr₃(Ce) | simulated | — | — | — | — | Out of scope. |
 
-## Leads found
+## Conclusions
 
-| Lead | Type (as described by the source) | Why interesting | To verify before use |
-|---|---|---|---|
-| IAEA test spectra for gamma-spectrometry software (1995/1997 set; 2002 low-level set with certified sources in Marinelli and pillbox geometry) — described in NIM A and related papers; an old public address at TU Delft is cited | Measured HPGe spectra made for software intercomparison, with reference values | The closest thing to a recognised benchmark for peak-area and activity software | Whether the files are still obtainable from an official IAEA or author source; licence; file format; exact reference values |
-| Zenodo record 3911859 (2020) | Labelled example gamma peaks from an HPGe detector, part real, part Geant4 | Peak-shape test cases | Contents are 13-bin peak snippets, not full spectra — may be unsuitable; licence; detector details |
-| Illinois Data Bank IDB-4860767 | Gamma-ray spectrum templates for source interdiction / enrichment, tagged NaI(Tl), CC BY | NaI(Tl) spectra with a clear licence | Measured or simulated; format; metadata per spectrum |
-| Dryad doi:10.7941/D1XC97 (RADAI project) | **Simulated** urban NaI(Tl) spectra, ~2.3 GB HDF5 | Large NaI data volume | Simulated → synthetic category only; size vs. the 15 GB allocation; relevance |
-| arXiv 2508.08306 benchmark | **Simulated** 3"×3" NaI(Tl) spectra (Geant4), nine radionuclides, experimental background | Identification benchmark | Where the data are hosted; licence; simulated → synthetic category only |
-| Mendeley Data xmmgbrfgnb | **Simulated** LaBr₃(Ce) spectra | Not HPGe or NaI | Probably out of scope |
+- **No measured NaI(Tl) dataset of standard sources with documented acquisition
+  conditions and a confirmed open licence was found.** NaI(Tl) remains validated on
+  simulations only, and the README and reports say so.
+- The **IAEA IDB** is the best open candidate for real HPGe-type spectra, but it serves
+  peak analysis and format testing, not efficiency or activity, and its detector
+  coverage and file formats must be confirmed first.
+- The **IAEA 2002 software-intercomparison spectra** remain the most valuable
+  benchmark for peak areas and activities; they are not publicly downloadable and must
+  be requested.
+- Simulated collections (RADAI, arXiv 2508.08306) can extend the synthetic tests but
+  never count as experimental validation.
 
-No lead has yet been confirmed as *measured NaI(Tl) spectra of standard sources with
-documented acquisition conditions*. That remains the main gap.
+## Next steps (need the project owner)
 
-## Next search steps (in order)
-
-1. IAEA: publications and Nuclear Data Services pages for the software-intercomparison
-   test spectra; ask the laboratory whether it already holds a copy.
-2. Zenodo / Figshare / Mendeley Data / Dryad, searching by detector and source
-   ("NaI(Tl) Cs-137 spectrum", "HPGe Eu-152 efficiency calibration spectra") and by
-   format ("N42", ".spe", ".chn").
-3. Data-availability statements of recent open-access papers on gamma-spectrum analysis
-   and radionuclide identification.
-4. NIST and national metrology institutes for reference spectra (as opposed to nuclear
-   decay data, which is a separate topic handled in Phase 9).
-5. Teaching-laboratory repositories of universities that publish raw spectra with their
-   lab manuals.
+1. Decide whether to request the IAEA intercomparison spectra (IAEA Nuclear Data
+   Section or the authors) and whether the laboratory already holds a copy.
+2. Open the IAEA IDB in a browser, confirm the licence statement, detector types and
+   formats, and start a provenance record for a small subset of HPGe spectra.
+3. Measured NaI(Tl) spectra are most simply obtained in the laboratory: standard
+   sources at a recorded geometry with certificates.
 
 ## Rules
 
-- No dataset is downloaded without the acceptance record being started first.
-- No analysis result depends on external data unless its provenance record is complete.
+- No dataset is downloaded before its provenance record is started.
+- No result depends on external data unless the provenance record is complete.
 - Simulated external data are never reported as experimental validation.
-- This task does not block development; an adapter for a new format is written only
-  after real files of that format have been inspected.
+- An import adapter for a new format is written only after real files are inspected.
 
-Sources consulted for the leads above:
-[Zenodo 3911859](https://zenodo.org/record/3911859),
-[Illinois Data Bank IDB-4860767](https://databank.illinois.edu/datasets/IDB-4860767),
-[Dryad 10.7941/D1XC97](https://datadryad.org/dataset/doi:10.7941/D1XC97),
-[arXiv 2508.08306](https://arxiv.org/pdf/2508.08306),
-[Mendeley Data xmmgbrfgnb](https://data.mendeley.com/datasets/xmmgbrfgnb/1),
-[IAEA gamma-ray spectra for testing of spectrum analysis software (journal index)](https://acnpsearch.tweb-dev.unibo.it/singlejournalindex/4827225).
+Sources consulted: the pages linked in the table, and
+[IAEA IDB](https://www-nds.iaea.org/idb),
+[INMM abstract on the IDB](https://resources.inmm.org/node/17224),
+[JRC record JRC98340](https://publications.jrc.ec.europa.eu/repository/handle/JRC98340),
+[2002 IAEA software intercomparison (CROSBI 114339)](https://www.bib.irb.hr/197730),
+[KINS paper on HyperGam with the 2002 set](https://kns.org/files/pre_paper/7/398박병건.pdf).

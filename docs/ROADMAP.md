@@ -12,6 +12,10 @@ candidates (synthetic and fictitious inputs only).
 
 ## v0.9.0-beta — complete workflow (target 22–25 November 2026)
 
+State 2026-11-12: implemented (pages, project file, reports, validation runner,
+executable); import of real nuclear data waits for redistribution terms; manual GUI
+testing and a clean-machine installation are open.
+
 - Desktop pages: Efficiency Calibration, Activity Calculation, Nuclide Identification.
   Each lists missing inputs instead of computing when information is absent.
 - Import of nuclear reference data with provenance (DDEP primary, ENSDF supplementary),

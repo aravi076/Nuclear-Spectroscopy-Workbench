@@ -1,4 +1,4 @@
-"""Generate the standard synthetic test spectra into data/synthetic/{hpge,nai}/.
+"""Generate the standard synthetic test spectra into data/synthetic/{hpge,nai,sources}/.
 
     .venv\\Scripts\\python.exe scripts\\generate_synthetic.py
 
@@ -13,12 +13,17 @@ from pathlib import Path
 
 from nsw.simulation.generator import generate, write_synthetic
 from nsw.simulation.presets import hpge_scenarios, nai_scenarios
+from nsw.simulation.sources import source_scenarios
 
 ROOT = Path(__file__).resolve().parents[1] / "data" / "synthetic"
 
 
 def main() -> int:
-    for folder, specs in (("hpge", hpge_scenarios()), ("nai", nai_scenarios())):
+    for folder, specs in (
+        ("hpge", hpge_scenarios()),
+        ("nai", nai_scenarios()),
+        ("sources", source_scenarios()),
+    ):
         for spec in specs:
             result = generate(spec)
             path = write_synthetic(result, ROOT / folder)

@@ -177,6 +177,83 @@ are known (for example from the resolution model): a free shape biases the area 
 marginal peak upwards. The uncertainty of the fixed values is not included in the
 result, and such widths are not offered for a resolution analysis.
 
+## Efficiency Calibration
+
+Fits ln ε as a polynomial in ln E to the full-energy-peak efficiencies of the lines of
+one reference source. For experimental spectra the page lists what is missing
+(certified source activity with reference date, geometry, detector model, nuclear data
+with a recorded source, verified energy calibration, authorisation) and the button
+stays disabled. For synthetic spectra:
+
+1. Fit the peaks of the source spectrum (Peak Analysis, then *Fit all candidate groups*).
+2. Choose the spectrum and the fictitious source SYN-CAL. Synthetic spectra have no
+   start time: enter the days between the source reference time and the measurement
+   (40 for `syn-cal-source`, filled in automatically).
+3. Choose the order and record the geometry, then *Fit efficiency curve*. The plot shows
+   the points and the curve with its 1σ band; the table lists every line and whether a
+   fitted peak was found for it. The curve is kept for the Activity page.
+
+## Activity Calculation
+
+Needs the efficiency curve of this session. Choose the sample spectrum (after fitting its
+peaks), the nuclide (fictitious SYN-X for `syn-x-sample`) and the measurement start, then
+*Calculate activity*. The result is the activity at the source reference time, combined
+over the lines by generalised least squares, with a test whether the lines agree.
+Experimental spectra are refused with the list of missing inputs.
+
+## Nuclide Identification
+
+Ranks nuclides of a reference library by how well their lines agree with the fitted
+peaks. The result is a list of **candidates** with a class (not supported, possible,
+probable, consistent) and the evidence for and against each: matched lines with their
+energy differences, expected lines that are missing, peaks shared with other
+candidates, the intensity test when an efficiency curve is used. It is never an
+identification.
+
+- The page is available only for spectra with a verified energy calibration; every
+  experimental spectrum is refused while experimental calibrations are provisional.
+- NSW contains no nuclear data. Synthetic spectra are compared with the fictitious test
+  library. *Load reference-data file…* reads an NSW reference-data file with provenance
+  (`docs/nuclear_data.md`); real data are never applied to synthetic spectra and the
+  fictitious library is never applied to measurements.
+- k is the window factor of |E_peak − E_line| ≤ k·σ; the extra energy uncertainty
+  widens the window for effects such as gain drift.
+- Fit every peak of the spectrum first: a library line without a fitted peak counts as
+  missing.
+- *Export candidates as CSV…* writes the candidates and their evidence.
+
+## Project File
+
+A project file (`.nswproj`, SQLite) keeps the spectra used, background designations,
+calibrations and every analysis result with its settings and the software version.
+
+- *New project…* creates a file (never inside an experimental dataset folder).
+- *Save session to project* (Ctrl+S) stores what the session holds; saving again adds
+  only new results. Stored results are never changed or deleted.
+- *Open project…* replaces the session with the project. Peak fits and energy
+  calibrations are computed again from the stored inputs and must reproduce the stored
+  values; disagreements are listed under the history table.
+- *Back up project* writes a timestamped copy next to the file.
+- Joint gross + background fits are not saved yet (their background is not recorded with
+  the fit); the save message says so.
+
+## Reports and figures
+
+*File → Export analysis report (PDF)…* writes a report for the spectrum of the page in
+front (or the one selected in the Spectrum Explorer): status banner, spectrum with
+fitted models, measurement and file identity with data hash, detector, calibration
+status, background handling, processing history, peak search and fits, efficiency,
+activity and nuclide candidates when they belong to that spectrum, methods,
+limitations and software versions. *Export spectrum figure* writes SVG, PDF or PNG.
+Reports contain no timestamps other than the stated creation time, so identical input
+gives an identical file.
+
+## Self-test of an installation
+
+`NSW.exe --self-test FOLDER` (or `python -m nsw.ui.app --self-test FOLDER`) runs the
+whole workflow on generated synthetic spectra and writes `FOLDER\selftest.log`; all 11
+steps must report `ok`. See `docs/installation.md` for building the executable.
+
 ## Synthetic data
 
 Generate the standard scenarios with
@@ -185,6 +262,6 @@ Generate the standard scenarios with
 .venv\Scripts\python.exe scripts\generate_synthetic.py
 ```
 
-They are written to `data\synthetic\hpge` and `data\synthetic\nai`, each file containing
+They are written to `data\synthetic\hpge`, `data\synthetic\nai` and `data\synthetic\sources` (spectra of the fictitious sources SYN-CAL and SYN-X), each file containing
 the counts and the full ground truth. Synthetic spectra are labelled as such everywhere
 and can only be combined with other synthetic spectra.

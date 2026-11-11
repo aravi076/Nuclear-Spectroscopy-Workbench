@@ -9,6 +9,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QCloseEvent
 from PySide6.QtWidgets import (
     QFileDialog,
+    QInputDialog,
     QListWidget,
     QMainWindow,
     QMessageBox,
@@ -21,6 +22,9 @@ from PySide6.QtWidgets import (
 import nsw
 from nsw.config import Settings, project_root
 from nsw.core.spectrum import Spectrum
+from nsw.services import identification as identification_service
+from nsw.services import project as project_service
+from nsw.services import report as report_service
 from nsw.services.calibration import export_calibration_csv
 from nsw.services.dataset import DatasetScan, scan_dataset
 from nsw.services.export import ExportError, ensure_output_allowed, export_spectrum_csv
@@ -32,13 +36,17 @@ from nsw.ui.background_page import BackgroundPage
 from nsw.ui.calibration_page import CalibrationPage
 from nsw.ui.dashboard import DashboardPage
 from nsw.ui.explorer import ExplorerPage
+from nsw.ui.identification_page import IdentificationPage
 from nsw.ui.peak_fit_page import PeakFitPage
 from nsw.ui.peak_search_page import PeakSearchPage
+from nsw.ui.project_page import ProjectPage
+from nsw.ui.quantification_page import ActivityPage, EfficiencyPage
 from nsw.ui.resolution_page import ResolutionPage
 from nsw.ui.state import AppState
 
 PAGE_DASHBOARD, PAGE_EXPLORER, PAGE_BACKGROUND, PAGE_PEAK_SEARCH, PAGE_PEAK_FIT = 0, 1, 2, 3, 4
-PAGE_CALIBRATION, PAGE_RESOLUTION = 5, 6
+PAGE_CALIBRATION, PAGE_RESOLUTION, PAGE_EFFICIENCY, PAGE_ACTIVITY = 5, 6, 7, 8
+PAGE_IDENTIFICATION, PAGE_PROJECT = 9, 10
 
 
 class MainWindow(QMainWindow):
@@ -67,6 +75,15 @@ class MainWindow(QMainWindow):
         self._add_page("Energy Calibration", self.calibration_page)
         self.resolution_page = ResolutionPage(self.state)
         self._add_page("Resolution Analysis", self.resolution_page)
+        self.efficiency_page = EfficiencyPage(self.state)
+        self._add_page("Efficiency Calibration", self.efficiency_page)
+        self.activity_page = ActivityPage(self.state)
+        self._add_page("Activity Calculation", self.activity_page)
+        self.identification_page = IdentificationPage(self.state)
+        self._add_page("Nuclide Identification", self.identification_page)
+        self.project: project_service.ProjectStore | None = None
+        self.project_page = ProjectPage()
+        self._add_page("Project File", self.project_page)
         self.nav.currentRowChanged.connect(self.pages.setCurrentIndex)
         self.nav.setCurrentRow(PAGE_DASHBOARD)
 
@@ -91,6 +108,12 @@ class MainWindow(QMainWindow):
         self.peak_fit_page.export_requested.connect(self.export_peaks_dialog)
         self.calibration_page.export_requested.connect(self.export_calibration_dialog)
         self.resolution_page.export_requested.connect(self.export_resolution_dialog)
+        self.identification_page.load_library_requested.connect(self.load_library_dialog)
+        self.identification_page.export_requested.connect(self.export_identification_dialog)
+        self.project_page.new_requested.connect(self.new_project_dialog)
+        self.project_page.open_requested.connect(self.open_project_dialog)
+        self.project_page.save_requested.connect(self.save_session)
+        self.project_page.backup_requested.connect(self.backup_project)
         self._update_actions()
 
     # ------------------------------------------------------------------ construction
@@ -112,20 +135,35 @@ class MainWindow(QMainWindow):
         self.act_open_syn.triggered.connect(self.choose_synthetic_folder)
         self.act_csv = QAction("Export selected spectrum as CSV…", self)
         self.act_csv.triggered.connect(self.export_csv_dialog)
+        self.act_report = QAction("Export analysis report (PDF)…", self)
+        self.act_report.triggered.connect(self.export_report_dialog)
+        self.act_figure = QAction("Export spectrum figure (SVG, PDF or PNG)…", self)
+        self.act_figure.triggered.connect(self.export_figure_dialog)
         self.act_png = QAction("Export plot as PNG…", self)
         self.act_png.triggered.connect(self.export_png_dialog)
+        self.act_new_project = QAction("New project…", self)
+        self.act_new_project.triggered.connect(self.new_project_dialog)
+        self.act_open_project = QAction("Open project…", self)
+        self.act_open_project.triggered.connect(self.open_project_dialog)
+        self.act_save_project = QAction("Save session to project", self)
+        self.act_save_project.setShortcut("Ctrl+S")
+        self.act_save_project.triggered.connect(self.save_session)
         act_quit = QAction("Exit", self)
         act_quit.triggered.connect(self.close)
         for a in (self.act_open, self.act_open_syn):
             file_menu.addAction(a)
         file_menu.addSeparator()
-        for a in (self.act_csv, self.act_png):
+        for a in (self.act_new_project, self.act_open_project, self.act_save_project):
+            file_menu.addAction(a)
+        file_menu.addSeparator()
+        for a in (self.act_csv, self.act_png, self.act_figure, self.act_report):
             file_menu.addAction(a)
         file_menu.addSeparator()
         file_menu.addAction(act_quit)
 
     def _update_actions(self) -> None:
         has = self.explorer.current_spectrum() is not None
+        self.act_save_project.setEnabled(self.project is not None)
         self.act_csv.setEnabled(has)
         self.act_png.setEnabled(has)
 
@@ -389,7 +427,253 @@ class MainWindow(QMainWindow):
         if name:
             self.export_png(Path(name), overwrite=True)
 
+    # ------------------------------------------------------------------ reports
+    def report_spectrum(self) -> Spectrum | None:
+        """The spectrum of the page in front, else the one selected in the explorer."""
+        page = self.pages.currentWidget()
+        current = getattr(page, "current_spectrum", None)
+        spectrum = current() if callable(current) else None
+        return spectrum if spectrum is not None else self.explorer.current_spectrum()
+
+    def build_report(self, spectrum: Spectrum) -> report_service.Report:
+        key = spectrum.data_sha256
+        efficiency = self.state.efficiency
+        activity = self.activity_page.result
+        ident = self.identification_page
+        same_activity = activity is not None and self.activity_page.current_spectrum() is spectrum
+        same_ident = ident.result is not None and ident.current_spectrum() is spectrum
+        return report_service.build_report(
+            spectrum,
+            search=self.state.peak_search(key),
+            fits=self.state.fits(key),
+            efficiency=efficiency[1] if efficiency is not None and efficiency[0] == key else None,
+            activity=activity if same_activity else None,
+            identification=ident.result if same_ident else None,
+            library=ident.current_library() if same_ident else None,
+        )
+
+    def export_report(self, path: Path, overwrite: bool = False) -> Path | None:
+        spectrum = self.report_spectrum()
+        if spectrum is None:
+            self._error("No spectrum", "Select a spectrum first.")
+            return None
+        try:
+            out = report_service.export_report(
+                self.build_report(spectrum), path, self.protected_roots(), overwrite
+            )
+        except ExportError as exc:
+            self._error("Report not written", str(exc))
+            return None
+        self.statusBar().showMessage(f"Report written: {out}", 10000)
+        return out
+
+    def export_report_dialog(self) -> None:
+        name, _ = QFileDialog.getSaveFileName(
+            self, "Export analysis report", self._default_output_dir(), "PDF (*.pdf)"
+        )
+        if name:
+            self.export_report(Path(name), overwrite=True)
+
+    def export_figure(self, path: Path, overwrite: bool = False) -> Path | None:
+        spectrum = self.report_spectrum()
+        if spectrum is None:
+            self._error("No spectrum", "Select a spectrum first.")
+            return None
+        try:
+            out = report_service.export_figure(
+                spectrum, self.state.fits(spectrum.data_sha256), path, self.protected_roots(),
+                overwrite,
+            )  # fmt: skip
+        except ExportError as exc:
+            self._error("Figure not written", str(exc))
+            return None
+        self.statusBar().showMessage(f"Figure written: {out}", 10000)
+        return out
+
+    def export_figure_dialog(self) -> None:
+        name, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export spectrum figure",
+            self._default_output_dir(),
+            "SVG (*.svg);;PDF (*.pdf);;PNG (*.png)",
+        )
+        if name:
+            self.export_figure(Path(name), overwrite=True)
+
+    # ------------------------------------------------------------------ nuclide page
+    def load_library_dialog(self) -> None:
+        name, _ = QFileDialog.getOpenFileName(
+            self, "Load NSW reference-data file", self._default_output_dir(), "JSON (*.json)"
+        )
+        if name:
+            self.load_library(Path(name))
+
+    def load_library(self, path: Path) -> bool:
+        try:
+            library = identification_service.load_reference_file(path)
+        except (identification_service.ProcessingError, OSError) as exc:
+            self._error("Reference data not loaded", str(exc))
+            return False
+        self.identification_page.add_library(library)
+        if self.project is not None:
+            project_service.save_reference_library(self.project, library)
+            self._show_project()
+        return True
+
+    def export_identification(self, path: Path, overwrite: bool = False) -> Path | None:
+        page = self.identification_page
+        s = page.current_spectrum()
+        if s is None or page.result is None:
+            return None
+        try:
+            return identification_service.export_identification_csv(
+                s, page.result, path, self.protected_roots(), overwrite
+            )
+        except ExportError as exc:
+            self._error("Export failed", str(exc))
+            return None
+
+    def export_identification_dialog(self) -> None:
+        start = str(
+            Path(self._default_output_dir()) / self.identification_page.suggested_filename()
+        )
+        name, _ = QFileDialog.getSaveFileName(
+            self, "Export nuclide candidates", start, "CSV (*.csv)"
+        )
+        if name:
+            self.export_identification(Path(name), overwrite=True)
+
+    # ------------------------------------------------------------------ project file
+    def _project_dir(self) -> str:
+        if self.settings is not None:
+            workspace = self.settings.paths.workspace
+            if workspace.is_dir():
+                return str(workspace)
+        return self._default_output_dir()
+
+    def _show_project(self) -> None:
+        if self.project is None:
+            self.project_page.set_project(None)
+        else:
+            names = {sha: name for sha, name, _, _ in self.project.spectrum_names()}
+            self.project_page.set_project(self.project.info, self.project.runs(), names)
+        self._update_actions()
+
+    def _set_project(self, store: project_service.ProjectStore | None) -> None:
+        if self.project is not None:
+            self.project.close()
+        self.project = store
+        self._show_project()
+
+    def new_project_dialog(self) -> None:
+        name, _ = QFileDialog.getSaveFileName(
+            self, "New NSW project", self._project_dir(), "NSW project (*.nswproj)"
+        )
+        if not name:
+            return
+        title, ok = QInputDialog.getText(self, "Project name", "Name of the project:")
+        if ok and title.strip():
+            self.new_project(Path(name), title)
+
+    def new_project(self, path: Path, title: str) -> bool:
+        try:
+            store = project_service.create_project(path, title, self.protected_roots())
+        except (project_service.ProjectStoreError, OSError) as exc:
+            self._error("Project not created", str(exc))
+            return False
+        self._set_project(store)
+        self.project_page.set_status("New project created. Save the session to store results.")
+        return True
+
+    def open_project_dialog(self) -> None:
+        name, _ = QFileDialog.getOpenFileName(
+            self, "Open NSW project", self._project_dir(), "NSW project (*.nswproj)"
+        )
+        if name:
+            self.open_project(Path(name))
+
+    def open_project(self, path: Path) -> bool:
+        """Open a project and replace the session with its contents."""
+        try:
+            store = project_service.open_project(path)
+            contents = project_service.load_project(store)
+        except (project_service.ProjectStoreError, OSError, ValueError) as exc:
+            self._error("Project not opened", str(exc))
+            return False
+        experimental, synthetic = project_service.session_scans(contents, store.path)
+        self.state.set_experimental(experimental)
+        self.state.set_synthetic(synthetic)
+        problems = list(contents.problems)
+        for sha, note in contents.backgrounds.items():
+            entry = self.state.entry(sha)
+            if entry is None or entry.spectrum.is_synthetic:
+                continue
+            try:
+                self.state.designate_background(entry.spectrum, note)
+            except ValueError as exc:
+                problems.append(f"background designation not restored: {exc}")
+        for sha, fits in contents.fits.items():
+            for fit in fits:
+                self.state.store_fit(sha, fit)
+        for item in contents.calibration_items:
+            self.state.add_calibration(item)
+        self._set_project(store)
+        self.project_page.set_problems(problems)
+        n_fits = sum(len(f) for f in contents.fits.values())
+        self.project_page.set_status(
+            f"Opened: {len(contents.spectra)} spectra, {n_fits} fits reproduced, "
+            f"{len(contents.calibration_items)} calibrations reproduced"
+            + (f"; {len(problems)} problems (listed below)" if problems else "."),
+            ok=not problems,
+        )
+        return True
+
+    def save_session(self) -> project_service.SaveReport | None:
+        if self.project is None:
+            self._error("No project open", "Create or open a project first.")
+            return None
+        items = []
+        for entry in self.state.all_entries():
+            search = self.state.peak_search(entry.key)
+            fits = tuple(self.state.fits(entry.key))
+            if search is not None or fits:
+                items.append(project_service.SessionSpectrum(entry.spectrum, search, fits))
+        calibrations = []
+        for item in self.state.calibration_history:
+            owner = self.state.entry(item.data_sha256) if item.data_sha256 else None
+            summary = {"chi2": item.fit.chi2, "ndf": item.fit.ndf, "p_value": item.fit.p_value}
+            calibrations.append(
+                project_service.SessionCalibration(
+                    owner.spectrum if owner else None, item.record, summary
+                )
+            )
+        backgrounds = [e.spectrum for e in self.state.background_entries()]
+        try:
+            report = project_service.save_session(self.project, items, calibrations, backgrounds)
+        except (project_service.ProjectStoreError, ValueError, OSError) as exc:
+            self._error("Session not saved", str(exc))
+            return None
+        self._show_project()
+        self.project_page.set_status(report.text(), ok=not report.skipped)
+        self.statusBar().showMessage("Session saved to the project.", 10000)
+        return report
+
+    def backup_project(self) -> Path | None:
+        if self.project is None:
+            return None
+        try:
+            target = self.project.backup()
+        except (project_service.ProjectStoreError, OSError) as exc:
+            self._error("Backup failed", str(exc))
+            return None
+        self.project_page.set_status(f"Backup written: {target}")
+        self._show_project()
+        return target
+
     def closeEvent(self, event: QCloseEvent) -> None:
         for worker in list(self._active_workers):
             worker.cancel()
+        if self.project is not None:
+            self.project.close()
+            self.project = None
         super().closeEvent(event)

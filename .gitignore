@@ -19,7 +19,7 @@ config/local.yaml
 *.sqlite
 *.sqlite3
 *.db
-*.nswproj/
+*.nswproj
 
 # Experimental spectra must never enter the repository.
 # (Synthetic fixtures use the .csv/.json formats under tests/fixtures and data/synthetic.)

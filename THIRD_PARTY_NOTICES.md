@@ -27,9 +27,12 @@ Licences as declared in the metadata of the versions installed on 2026-11-11.
 | Matplotlib (and contourpy, cycler, fonttools, kiwisolver, packaging, pillow, pyparsing) | 3.11.2 | Matplotlib licence (PSF-based); dependencies BSD-3-Clause, MIT, MIT-CMU, Apache-2.0 OR BSD-2-Clause | declared dependency for report figures; not imported by NSW yet |
 
 Qt for Python is used under the LGPL-3.0 option: NSW imports it as a separately
-installed library and does not modify or statically link it. A packaged executable
-(not part of this repository) would have to ship the LGPL text and keep the Qt
-libraries replaceable.
+installed library and does not modify or statically link it. The Windows build
+(`packaging/nsw.spec`, one folder) keeps the Qt libraries as separate, replaceable
+DLLs. The PySide6 wheels used for the build contain no LGPL text, so **before an
+executable is distributed** the texts of the LGPL-3.0 and GPL-3.0
+(https://www.gnu.org/licenses/lgpl-3.0.txt, https://www.gnu.org/licenses/gpl-3.0.txt)
+must be added to it, together with this file. No executable has been distributed.
 
 ## Development tools (optional extra `dev`; not needed to run NSW)
 

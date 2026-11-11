@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import gc
 import sys
+from pathlib import Path
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
@@ -56,9 +57,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--load", action="store_true", help="load the datasets configured in config/local.yaml"
     )
+    parser.add_argument(
+        "--self-test",
+        metavar="FOLDER",
+        type=Path,
+        help="run the end-to-end self-test on synthetic data, writing only into FOLDER",
+    )
     args = parser.parse_args(argv)
 
     app = create_application()
+    if args.self_test is not None:
+        from nsw.ui import selftest
+
+        return selftest.run(app, args.self_test)
     settings: Settings | None
     try:
         settings = load_settings()

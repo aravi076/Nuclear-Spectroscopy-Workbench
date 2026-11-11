@@ -388,7 +388,29 @@ such lines are not combined in the logarithm.
 **Not corrected, stated with every result:** true coincidence summing, self-attenuation
 in extended sources, and any difference between calibration and sample geometry.
 
-## 12. Not yet implemented
+## 12. Nuclide candidates (`nsw.analysis.identification`)
+
+The complete rules are the module docstring; in short. A peak matches a library line
+when |E_peak − E_line| ≤ k·√(u_peak² + u_line² + u_cal² + u_extra²), k = 3 by default
+(a true line is lost once in 370; the window and the chance coincidences grow with k).
+Per nuclide the matched lines, the expected but missing lines and the shared peaks are
+listed. With an efficiency curve the area of an unmatched line is predicted from the
+anchor (the most significant matched peak) and compared with an approximate Currie
+limit, and the values ln(A/(P·ε)) of the matched lines are tested for agreement by
+generalised least squares. Classes: *not supported*, *possible*, *probable*,
+*consistent*; one matched peak is at most *possible*, *consistent* needs an efficiency
+curve. The output is a list of candidates with evidence, never an identification, and
+the service refuses spectra without a verified energy calibration and every
+experimental spectrum while experimental verification is disabled. Nuclear data are
+not shipped (`docs/nuclear_data.md`). Known weaknesses: `docs/REVIEW_PHASE8_9.md`.
+
+## 13. Validation metrics (`nsw.services.validation_suite`)
+
+Relative bias, pull, coverage, rates and repeatability are defined in the module
+docstring and applied with a tolerance of five standard errors; metrics without an
+ideal value are reported as *characterised* and never as passed.
+
+## 14. Not yet implemented
 
 Decision thresholds and detection limits, coincidence-summing and attenuation
 corrections, Monte Carlo uncertainty propagation, nuclide identification.

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nsw"
-version = "0.1.0a1"
+version = "0.9.0.dev0"
 description = "Nuclear Spectroscopy Workbench: gamma-ray spectroscopy analysis for HPGe and NaI(Tl) detectors"
 readme = "README.md"
 license = "MIT"
@@ -61,6 +61,10 @@ src = ["src", "tests"]
 select = ["E", "F", "W", "I", "B", "UP", "NPY", "RUF"]
 # Scientific text legitimately uses Greek letters and typographic maths symbols.
 ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+# report text constants: one paragraph per line, wrapped when the PDF is drawn
+"src/nsw/services/report.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.11"

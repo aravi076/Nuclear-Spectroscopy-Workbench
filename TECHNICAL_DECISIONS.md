@@ -266,3 +266,36 @@ as missing. It is not reported as a detection limit of the measurement.
 ## TD-047 Public repository: nothing pushed without approval; history not rewritten in place (2026-11-11)
 Audit findings are fixed in the current files; removal from history is proposed as a
 rewritten clone, leaving the working repository as the private original.
+
+## TD-048 Corrections after the independent review (2026-11-11)
+Candidate ranking: only a probable or consistent candidate subsumes another; lines
+outside the efficiency curve carry no weight; two peaks matched by lines of known
+emission probability are needed above "possible"; unresolvable peaks count once; the
+anchor area is shared by all lines on the anchor peak. Gates: a verified calibration is
+never attached to an experimental spectrum, and the identification service refuses
+experimental spectra, while `EXPERIMENTAL_VERIFICATION_ENABLED` is False; fits must
+carry the spectrum's data hash. Evaluation names are stored trimmed and upper-case.
+Open findings: `docs/REVIEW_PHASE8_9.md`.
+
+## TD-049 Validation suite: checked versus characterised metrics, 5 standard errors (2026-11-11)
+A metric with an ideal value passes or fails against a five-standard-error tolerance;
+behaviour that is a known limitation (bias of weak free-shape fits, detection near the
+threshold) is reported as characterised and can never count as passed. Results carry a
+SHA-256 digest: the same seed must reproduce it exactly.
+
+## TD-050 Project file: SQLite, append-only, reproduction on reopening (2026-11-12)
+One file per project; results are never updated or deleted (database triggers).
+Spectra are stored completely so a project can be reopened when the source folder is
+gone. Fits and calibrations are not trusted from the file: they are recomputed from
+the stored inputs and must agree (exactly when the starting values are recorded).
+
+## TD-051 Reports drawn with Matplotlib without pyplot; no timestamps in the files (2026-11-12)
+No new dependency (Matplotlib was already declared). Identical input gives an identical
+PDF, so reports can be compared and archived by hash. Tables too wide for the page are
+written as one block per row instead of being cut.
+
+## TD-052 Windows build: PyInstaller one folder, verified by a built-in self-test (2026-11-12)
+One folder (not one file) keeps the Qt libraries replaceable (LGPL) and starts faster.
+Because the test suite is not shipped, `--self-test` exercises the real window on
+synthetic data and is the acceptance check for a build. LGPL/GPL texts must be added
+before any distribution (not yet done; nothing distributed).
