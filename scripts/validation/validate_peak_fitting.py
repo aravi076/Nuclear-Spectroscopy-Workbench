@@ -1,6 +1,6 @@
 """Monte Carlo validation tables for peak search and fitting (synthetic data only).
 
-    .venv\\Scripts\\python.exe scripts\\validate_peak_fitting.py [n_trials]
+    .venv\\Scripts\\python.exe scripts\\validation\\validate_peak_fitting.py [n_trials]
 
 Prints Markdown tables (used in VALIDATION_REPORT.md). Deterministic for a given
 n_trials: every trial uses a fixed seed. Definitions of the metrics are in

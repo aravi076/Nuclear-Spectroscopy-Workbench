@@ -82,11 +82,11 @@ jobs:
 
       - name: Generic secret and path scan of the checkout
         # private patterns live only on the owner's machine; here the generic ones run
-        run: uv run --no-sync python scripts/scan_public_copy.py . --no-private
+        run: uv run --no-sync python scripts/release/scan_public_copy.py . --no-private
 
       - name: Synthetic validation run with repeatability
         if: runner.os == 'Windows'
-        run: uv run --no-sync python scripts/run_validation.py --trials 1000 --repeat --out validation-run
+        run: uv run --no-sync python scripts/validation/run_validation.py --trials 1000 --repeat --out validation-run
 
       - name: Keep the validation tables
         if: runner.os == 'Windows' && always()

@@ -1,6 +1,6 @@
 """Check that relative links and backticked repository paths in Markdown files exist.
 
-    .venv\\Scripts\\python.exe scripts\\check_links.py
+    .venv\\Scripts\\python.exe scripts\\release\\check_links.py
 
 Checks ``[text](relative/path)`` links in every tracked ``.md`` file and backticked
 references of the form ``docs/...``, ``src/...``, ``scripts/...``, ``tests/...``,
@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 LINK = re.compile(r"\]\(([^)\s#]+)(?:#[^)]*)?\)")
 # personal, git-ignored files: documented, but never part of a checkout
 PERSONAL = {"config/local.yaml"}

@@ -1,6 +1,6 @@
 # Install, self-test, upgrade-reinstall and uninstall an NSW installer silently.
 #
-#   powershell -ExecutionPolicy Bypass -File scripts\smoke_test_installer.ps1 NSW-Setup-<v>-x64.exe [-CleanMachine]
+#   powershell -ExecutionPolicy Bypass -File scripts\release\smoke_test_installer.ps1 NSW-Setup-<v>-x64.exe [-CleanMachine]
 #
 # Uses a throw-away install folder under %TEMP%, never the user's real installation
 # folder, and a marker file in %LOCALAPPDATA%\NSW to prove user data survives. Prints

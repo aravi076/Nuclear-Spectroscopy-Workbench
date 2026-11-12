@@ -42,7 +42,7 @@
 ### Added
 
 - 15 regression tests for the review findings.
-- Consolidated synthetic validation (`scripts/run_validation.py`): checked metrics with
+- Consolidated synthetic validation (`scripts/validation/run_validation.py`): checked metrics with
   five-standard-error criteria, characterised limitations, bit-identical repeatability.
 - Project files (SQLite): spectra, background designations, calibrations and every result
   with settings and software version; append-only; fits and calibrations recomputed and

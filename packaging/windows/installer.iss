@@ -1,6 +1,6 @@
 ; Inno Setup 6 script for the NSW Windows installer (per-user, no administrator rights).
 ;
-;   scripts\build_windows.ps1          builds the application folder and runs this script
+;   scripts\release\build_windows.ps1          builds the application folder and runs this script
 ;   ISCC.exe /DAppVersion=0.9.0 packaging\windows\installer.iss
 ;
 ; Installs build\dist\NSW (PyInstaller one-folder build) into

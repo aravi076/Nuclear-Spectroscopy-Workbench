@@ -86,7 +86,7 @@ Fixed-seed scenarios (`validation/test_peak_fitting.py`; pull = (estimate − tr
 | NaI-like pair 0.9 FWHM apart, 3:1, 4 × 10⁴ counts: search gives **one** candidate; 2-component model statistically supported (ΔBIC > 100) but area correlation < −0.5; statement says "not proof" of resolution | – | pass |
 | Single line offered two components | not supported | pass |
 
-Monte Carlo, 1000 independent spectra per case (`scripts/validate_peak_fitting.py 1000`;
+Monte Carlo, 1000 independent spectra per case (`scripts/validation/validate_peak_fitting.py 1000`;
 definitions in `nsw.services.validation`; the tests repeat the key cases with 300
 trials and 5-standard-error tolerances). One Gaussian on a flat continuum, fit region
 ±3 FWHM, free area, position, width and linear continuum. Ideal: bias 0, pull sd 1,
@@ -228,7 +228,7 @@ refused or reported. Corrections after the independent review: `docs/reports/REV
 
 ### Consolidated run (Phase 10)
 
-`scripts/run_validation.py --trials 1000 --repeat` (about 3.5 minutes) runs every engine
+`scripts/validation/run_validation.py --trials 1000 --repeat` (about 3.5 minutes) runs every engine
 on generated spectra and writes `reports/validation_run.md` and `.json`. Metrics and
 criteria are defined in `nsw.services.validation_suite`: relative bias within 5
 standard errors, 1σ coverage within 5 binomial standard errors of 0.6827, required

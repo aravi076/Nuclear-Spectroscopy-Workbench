@@ -1,6 +1,6 @@
 # Build the NSW Windows application folder and installer from the locked environment.
 #
-#   powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
+#   powershell -ExecutionPolicy Bypass -File scripts\release\build_windows.ps1
 #
 # Steps: uv sync --locked, tests are NOT run here (run them before), generate the
 # synthetic demo spectra, collect licences,
@@ -8,7 +8,7 @@
 # SHA-256 checksums. Output: build\dist\NSW, build\installer\NSW-Setup-<version>-x64.exe,
 # build\installer\SHA256SUMS.txt.
 $ErrorActionPreference = "Stop"
-$root = Split-Path -Parent $PSScriptRoot
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $root
 $py = Join-Path $root ".venv\Scripts\python.exe"
 
@@ -18,9 +18,9 @@ $version = & $py -c "import nsw; print(nsw.__version__)"
 Write-Host "NSW version $version"
 
 # demo spectra for the installer: generated (git-ignored), always fresh and synthetic
-& $py scripts\generate_synthetic.py
+& $py scripts\data\generate_synthetic.py
 if ($LASTEXITCODE -ne 0) { throw "generating the synthetic demo spectra failed" }
-& $py scripts\collect_licenses.py build\licenses
+& $py scripts\release\collect_licenses.py build\licenses
 if ($LASTEXITCODE -ne 0) { throw "licence collection failed" }
 & $py -m PyInstaller packaging\windows\NSW.spec --noconfirm --distpath build\dist --workpath build\work
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }

@@ -1,6 +1,6 @@
 """The consolidated validation runner: structure, determinism and failure reporting.
 
-The statistical content is produced by ``scripts/run_validation.py`` with many trials;
+The statistical content is produced by ``scripts/validation/run_validation.py`` with many trials;
 here a short run checks that the suite itself works and is reproducible.
 """
 

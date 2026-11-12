@@ -4,7 +4,7 @@ Each run is a fresh interpreter (no module cache in memory). The first run after
 reboot or a rebuild is "cold" (files not in the operating-system cache); later runs are
 "warm". The script reports every run so cold and warm can be told apart.
 
-    .venv\\Scripts\\python.exe scripts\\measure_startup.py --runs 5
+    .venv\\Scripts\\python.exe scripts\\dev\\measure_startup.py --runs 5
 """
 
 from __future__ import annotations

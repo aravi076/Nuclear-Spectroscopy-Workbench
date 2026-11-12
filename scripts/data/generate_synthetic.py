@@ -1,6 +1,6 @@
 """Generate the standard synthetic test spectra into data/synthetic/{hpge,nai,sources}/.
 
-    .venv\\Scripts\\python.exe scripts\\generate_synthetic.py
+    .venv\\Scripts\\python.exe scripts\\data\\generate_synthetic.py
 
 Deterministic: re-running reproduces identical files; an existing file with different
 content is never overwritten (the script stops instead).
@@ -15,7 +15,7 @@ from nsw.simulation.generator import generate, write_synthetic
 from nsw.simulation.presets import hpge_scenarios, nai_scenarios
 from nsw.simulation.sources import source_scenarios
 
-ROOT = Path(__file__).resolve().parents[1] / "data" / "synthetic"
+ROOT = Path(__file__).resolve().parents[2] / "data" / "synthetic"
 
 
 def main() -> int:

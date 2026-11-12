@@ -1,6 +1,6 @@
 """Consolidated synthetic validation run (see ``nsw.services.validation_suite``).
 
-    .venv\\Scripts\\python.exe scripts\\run_validation.py [--trials 200] [--seed 50000]
+    .venv\\Scripts\\python.exe scripts\\validation\\run_validation.py [--trials 200] [--seed 50000]
                                                          [--repeat] [--out reports]
 
 Writes ``validation_run.md`` and ``validation_run.json`` into the output folder

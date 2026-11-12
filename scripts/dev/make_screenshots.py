@@ -4,7 +4,7 @@ No laboratory data are loaded: the window is started with empty experimental roo
 the generated synthetic HPGe scenarios. Output: docs/images/*.png. Uses the normal
 Windows display (the offscreen Qt platform has no fonts), so a window appears briefly.
 
-    .venv\\Scripts\\python.exe scripts\\make_screenshots.py
+    .venv\\Scripts\\python.exe scripts\\dev\\make_screenshots.py
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from nsw.ui.main_window import (
     MainWindow,
 )
 
-OUT = Path(__file__).resolve().parents[1] / "docs" / "images"
+OUT = Path(__file__).resolve().parents[2] / "docs" / "images"
 SPECTRUM = "hpge-isolated-peaks"
 
 

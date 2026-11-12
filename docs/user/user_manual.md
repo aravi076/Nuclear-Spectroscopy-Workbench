@@ -356,7 +356,7 @@ steps must report `ok`. See `docs/user/installation.md` for building the executa
 Generate the standard scenarios with
 
 ```powershell
-.venv\Scripts\python.exe scripts\generate_synthetic.py
+.venv\Scripts\python.exe scripts\data\generate_synthetic.py
 ```
 
 They are written to `data\synthetic\hpge`, `data\synthetic\nai` and `data\synthetic\sources` (spectra of the fictitious sources SYN-CAL and SYN-X), each file containing

@@ -114,10 +114,10 @@ Run inside the public-candidate directory with its own fresh environment
 | Coverage of non-GUI code | 97 % |
 | `ruff check`, `ruff format --check` | clean |
 | `mypy --strict` on `src/nsw` | clean (64 source files) |
-| `scripts/generate_synthetic.py` | wrote 12 synthetic spectra |
-| Application start and seven pages (`scripts/make_screenshots.py`) | ran; package imported from this directory |
+| `scripts/data/generate_synthetic.py` | wrote 12 synthetic spectra |
+| Application start and seven pages (`scripts/dev/make_screenshots.py`) | ran; package imported from this directory |
 | README library example | ran |
-| `scripts/validate_peak_fitting.py` (Monte Carlo tables of the validation report) | ran to completion, exit code 0 |
+| `scripts/validation/validate_peak_fitting.py` (Monte Carlo tables of the validation report) | ran to completion, exit code 0 |
 | Private laboratory dataset | unchanged: 257 files match the SHA-256 manifest (verified from the private repository, read-only) |
 
 Experimental validation: none in this repository.

@@ -307,7 +307,7 @@ used by the application: `nsw.analysis.distributions` computes the chi-square an
 survival functions and the Poisson probability with `scipy.special` (`chdtrc`, `ndtr`,
 `xlogy`/`gammaln`), tested against `scipy.stats` to a relative 1e-12 (Poisson 1e-10)
 over grids including the far tails. Import of the main window: 8.8 s → 3.2 s; main
-window shown: 9.1 s → 3.6 s (`scripts/measure_startup.py`, warm runs). The remaining
+window shown: 9.1 s → 3.6 s (`scripts/dev/measure_startup.py`, warm runs). The remaining
 time is mostly `scipy.special`/`scipy.linalg` (0.8 s), pydantic models and PyQtGraph.
 
 ## TD-054 Dependencies locked with uv; pandas removed (2026-11-12)
@@ -319,7 +319,7 @@ package requires pandas) and were removed: −13 MB pandas and −1.5 MB tzdata 
 previous build folder (269 MB).
 
 ## TD-055 Pre-publication scanner; real file names and a time stamp removed from tests (2026-11-12)
-`scripts/scan_public_copy.py` searches a public candidate folder (text and binary
+`scripts/release/scan_public_copy.py` searches a public candidate folder (text and binary
 files, except Git-ignored ones) and every reachable Git blob and commit for private
 patterns kept in git-ignored `local/public_scan_patterns.txt` (dataset folder name,
 owner identifiers, private dataset file names of 6+ characters, the acquisition time
@@ -506,13 +506,13 @@ upgrades, `{autopf}` with lowest privileges, licence page, Start Menu entries in
 self-test, demo spectra and licences, optional desktop shortcut, launch after install;
 the uninstaller removes only installed files). The spec moved to
 `packaging/windows/NSW.spec` and bundles `build/licenses` from
-`scripts/collect_licenses.py` (licence files of the 22 runtime packages, verbatim
+`scripts/release/collect_licenses.py` (licence files of the 22 runtime packages, verbatim
 LGPL-3.0 and GPL-3.0 texts taken from local installed packages, Python licence, Qt
 replacement notice; nothing downloaded). The installed application reads its settings
-from `%LOCALAPPDATA%\NSW\local.yaml`. `scripts/build_windows.ps1` builds from the lock,
+from `%LOCALAPPDATA%\NSW\local.yaml`. `scripts/release/build_windows.ps1` builds from the lock,
 self-tests the built folder, compiles the installer and writes `SHA256SUMS.txt`;
-`scripts/smoke_test_installer.ps1` installs silently to a temporary folder, self-tests,
+`scripts/release/smoke_test_installer.ps1` installs silently to a temporary folder, self-tests,
 reinstalls, uninstalls and checks that user data remain. Not signed.
-`scripts/ux_screenshots.py` showed a minimum window width of 1579 px; rows were split,
+`scripts/dev/ux_screenshots.py` showed a minimum window width of 1579 px; rows were split,
 pages put in scroll areas, the Regions tab made scrollable and the spectrum plot given a
 minimum height (docs/reports/UX_TEST_REPORT.md).

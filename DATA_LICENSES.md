@@ -4,7 +4,7 @@
 
 | Data | Origin | Terms |
 |---|---|---|
-| Synthetic spectra (`scripts/generate_synthetic.py`, written to `data/synthetic/`, git-ignored) | produced by NSW's own generator from invented parameters | part of NSW; MIT, as the code |
+| Synthetic spectra (`scripts/data/generate_synthetic.py`, written to `data/synthetic/`, git-ignored) | produced by NSW's own generator from invented parameters | part of NSW; MIT, as the code |
 | Fictitious sources and reference library (`nsw.simulation.sources`, `nsw.simulation.reference`: SYN-CAL, SYN-X, DECOY-…) | invented values, labelled as such; **not nuclear data** | part of NSW; MIT, as the code |
 | Fabricated format fixtures (`tests/fixtures/builders.py`) | byte sequences built by the tests in the instrument file formats, with invented counts | part of NSW; MIT, as the code |
 | Screenshots (`docs/images/`) | the application showing synthetic spectra | part of NSW; MIT, as the code |
