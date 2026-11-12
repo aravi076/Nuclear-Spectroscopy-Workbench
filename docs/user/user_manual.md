@@ -12,6 +12,20 @@ page; project files and reports are not available yet.
 .venv\Scripts\python.exe -m nsw.ui.app --load     # load the folders in config\local.yaml
 ```
 
+## Workflow panel and modes
+
+Under the page list, the **workflow panel** shows the twelve stages of an analysis
+(import, integrity, detector, background, peak detection, peak fitting, energy
+calibration, resolution, efficiency, activity, nuclide identification, reporting) for
+the spectrum selected in the Spectrum Explorer: ✓ done, → ready, ✗ blocked (with the
+reason), ○ optional. The suggested next step is shown below; clicking a stage opens its
+page. Blocked stages stay blocked for the same reasons as their pages (for example,
+efficiency and activity of measured spectra need certified source data).
+
+*Mode* switches between **Beginner** (default: fewer controls) and **Advanced** (every
+control, e.g. continuum channels, model comparison, sensitivity, covariance scaling,
+higher-order tests). The analysis is identical in both modes and switching keeps all work.
+
 ## Project Dashboard
 
 - **Open experimental dataset folder…** reads every file below the chosen folder. The
@@ -54,6 +68,54 @@ NSW does not decide from a file name that a spectrum is a background. Right-clic
 independent measurement in *Raw spectra* and choose **Designate as background
 measurement**. It then appears under *Background spectra*; the original stays unchanged.
 Intermediate saves cannot be designated. Designations last for the session only.
+
+### Working on the plot: modes, regions of interest, shortcuts
+
+The buttons above every spectrum plot choose what a mouse drag does:
+
+| Mode | Key | Mouse |
+|---|---|---|
+| Navigate | Esc | drag to pan, wheel to zoom, double-click to reset |
+| Zoom box | Z | drag a rectangle to zoom to it |
+| Region | R | drag along the spectrum to mark a region of interest |
+| Select | S | click a peak marker; Ctrl+click adds or removes it |
+
+Home resets the view, L switches the logarithmic axis. Right-click opens a menu (select
+the region under the cursor, add a peak candidate at that channel, fit or delete the
+selected region, switch modes).
+
+**Regions of interest** (tab *Regions of interest* under the Explorer plot) belong to
+the first spectrum shown. Drag a region's edges or body to change it; Del deletes the
+selected region; Ctrl+Z and Ctrl+Y (or the Undo/Redo buttons) undo and redo every
+change. A region never changes the spectrum. For each region the table shows the net
+counts (gross minus a straight continuum through the mean of the edge channels, with
+the continuum's own uncertainty; negative values are kept), the decision threshold and
+the detection limit, and whether the net counts are above the decision threshold.
+
+**Peak candidates.** When a spectrum is opened, NSW searches it for peak candidates
+(switch this off with *Search for peaks when a spectrum is opened*). *Sensitivity* is
+the minimum significance in σ; *Search spectrum* and *Search region* repeat the search.
+Markers are coloured by class: green strong (significance ≥ 10), orange weak, purple
+dashed doubtful (close to the threshold or a width that does not match the others),
+grey dashed not photopeak-like (more than 2.5 × the expected width: a Compton edge or
+continuum structure is more likely). In Select mode (S) click markers and press *Exclude
+selected* to leave them out of fitting (light grey dotted; undo with Ctrl+Z or *Restore
+excluded*). Candidates are search results, not nuclear transitions.
+
+**Fitting a region.** Select a region and press F (or *Fit region*). The peaks fitted
+are the region's own peaks, else the candidates of the last peak search inside it, else
+candidates found by searching the region; right-click → *Add peak candidate* adds a peak
+at the cursor. The fit appears below the table with its residuals and joins the
+spectrum's fits on the Peak Fitting page. *Compare models* fits constant, linear and
+linear + step continua and keeps the simplest one unless a richer one improves the fit
+significantly (p < 0.01); the table shows every model's statistic, degrees of freedom,
+p-value and areas.
+
+*Limits* chooses the method: **ISO 11929 framework** (default; conformity with the
+standard is not verified) or **Currie (1968)**. For counts the two give the same
+numbers; they differ once a conversion factor with an uncertainty (efficiency, emission
+probability) is involved. The default method and α, β, γ are set under
+`analysis.detection_limits` in `config/local.yaml`.
 
 ## Background Subtraction
 
@@ -152,6 +214,18 @@ by χ². Peaks with area/uncertainty below 3 are reported as not significant.
    peaks you know to be the same line. If the positions disagree, the gain drifted and
    one calibration does not fit all runs.
 
+### Suggested assignments from a reference library
+
+Above the peak table: choose a library, enter an **approximate** gain (keV per channel)
+and offset — your own first guess, not the vendor value stored in a file — and its
+relative uncertainty, then *Suggest assignments*. Peaks with exactly one compatible line
+get its energy, uncertainty and source filled in (label *suggested*); ambiguous peaks are
+listed with their candidate lines for you to decide. Review every row before fitting.
+When you fit, NSW also warns about one line given to two peaks, two lines on one peak,
+too few points for the order, points covering only a small part of the spectrum, and
+points deviating by more than 3 σ after the fit. For measured spectra the calibration
+stays PROVISIONAL whatever the suggestions.
+
 ## Resolution Analysis
 
 1. Fit peaks first. The page lists the peaks of statistically acceptable fits whose
@@ -201,6 +275,29 @@ peaks), the nuclide (fictitious SYN-X for `syn-x-sample`) and the measurement st
 over the lines by generalised least squares, with a test whether the lines agree.
 Experimental spectra are refused with the list of missing inputs.
 
+## Nuclear Data Explorer
+
+Browses the reference libraries loaded in this session: the fictitious test library
+(always) and NSW reference-data files you load (*Load reference-data file…*). NSW
+contains no real nuclear data. Select a nuclide to see its lines (relative intensities
+are labelled *relative* and are never used as emission probabilities) and every
+provenance field (evaluation, dataset, retrieval date, citation, reuse terms,
+transformations). *Evaluation differences* lists nuclides covered by several
+evaluations; values are never merged.
+
+*Show lines of the selected nuclides* draws dashed reference lines on the chosen
+spectrum (stronger lines darker), positioned with the spectrum's **verified** energy
+calibration; the axis stays in channels. Without a verified calibration, for measured
+spectra while experimental verification is off, or with the wrong kind of library
+(fictitious for synthetic spectra, real for measurements), the lines are not drawn and
+the reason is shown.
+
+Fitted peaks are marked on the plot. In Select mode (S) click one and press *Match
+selected peak*: the table lists the reference lines inside the window |ΔE| ≤ 3σ, ranked
+by how many of each nuclide's other strong lines also have a fitted peak, then by
+|ΔE|/σ. *Accept* / *Reject assignment* records your decision for this session. This is
+a ranking of candidates, not an identification.
+
 ## Nuclide Identification
 
 Ranks nuclides of a reference library by how well their lines agree with the fitted
@@ -214,7 +311,7 @@ identification.
   experimental spectrum is refused while experimental calibrations are provisional.
 - NSW contains no nuclear data. Synthetic spectra are compared with the fictitious test
   library. *Load reference-data file…* reads an NSW reference-data file with provenance
-  (`docs/nuclear_data.md`); real data are never applied to synthetic spectra and the
+  (`docs/science/nuclear_data.md`); real data are never applied to synthetic spectra and the
   fictitious library is never applied to measurements.
 - k is the window factor of |E_peak − E_line| ≤ k·σ; the extra energy uncertainty
   widens the window for effects such as gain drift.
@@ -252,7 +349,7 @@ gives an identical file.
 
 `NSW.exe --self-test FOLDER` (or `python -m nsw.ui.app --self-test FOLDER`) runs the
 whole workflow on generated synthetic spectra and writes `FOLDER\selftest.log`; all 11
-steps must report `ok`. See `docs/installation.md` for building the executable.
+steps must report `ok`. See `docs/user/installation.md` for building the executable.
 
 ## Synthetic data
 

@@ -26,10 +26,10 @@
 | ENSDF, maintained by NNDC (https://www.nndc.bnl.gov/ensdf/) | citation guidelines | no explicit redistribution licence found: **not bundled** |
 
 Data a user imports keep the terms of their source; NSW records those terms with every
-record (`docs/nuclear_data.md`).
+record (`docs/science/nuclear_data.md`).
 
 ## Public datasets
 
-`docs/external_dataset_discovery.md` lists candidate public spectra for future
+`docs/science/external_dataset_discovery.md` lists candidate public spectra for future
 benchmarking. None has been downloaded or included; each has its own licence, to be
 checked before use.

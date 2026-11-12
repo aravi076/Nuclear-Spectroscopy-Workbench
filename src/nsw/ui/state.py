@@ -6,11 +6,14 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import QObject, Signal
 
+from nsw.core.nuclear_data import ReferenceLibrary
 from nsw.core.spectrum import MeasurementStatus, Spectrum
 from nsw.services.calibration import CalibrationHistoryItem
 from nsw.services.dataset import DatasetScan
 from nsw.services.efficiency import EfficiencyCurve
+from nsw.services.identification import fictitious_library
 from nsw.services.peaks import FitResult, PeakSearchResult
+from nsw.services.roi import Roi
 
 
 @dataclass(frozen=True)
@@ -49,6 +52,9 @@ class AppState(QObject):
     fits_changed = Signal(str)  # data hash of the spectrum whose fits changed
     calibrations_changed = Signal()
     efficiency_changed = Signal()
+    rois_changed = Signal(str)  # data hash of the spectrum whose regions changed
+    libraries_changed = Signal()
+    assignments_changed = Signal(str)  # data hash
 
     def __init__(self) -> None:
         super().__init__()
@@ -59,6 +65,11 @@ class AppState(QObject):
         self._fits: dict[str, list[FitResult]] = {}  # data hash -> fits, by region
         self.calibration_history: list[CalibrationHistoryItem] = []
         self.efficiency: tuple[str, EfficiencyCurve] | None = None  # (spectrum hash, curve)
+        self._rois: dict[str, dict[str, Roi]] = {}  # data hash -> region id -> region
+        self._excluded: dict[str, frozenset[float]] = {}  # data hash -> channels
+        # reference libraries loaded in this session (the fictitious one always)
+        self.libraries: list[ReferenceLibrary] = [fictitious_library()]
+        self._assignments: dict[str, list[dict[str, object]]] = {}
 
     # ---- scans
     def set_experimental(self, scan: DatasetScan) -> None:
@@ -89,6 +100,14 @@ class AppState(QObject):
     def peak_search(self, key: str) -> PeakSearchResult | None:
         return self._peak_searches.get(key)
 
+    def excluded_candidates(self, key: str) -> frozenset[float]:
+        """Candidate channels the analyst excluded from fitting (rounded keys)."""
+        return self._excluded.get(key, frozenset())
+
+    def set_excluded_candidates(self, key: str, channels: frozenset[float]) -> None:
+        self._excluded[key] = frozenset(channels)
+        self.peaks_changed.emit(key)
+
     # ---- peak fits (per spectrum; a new fit of the same region replaces the old one)
     def store_fit(self, key: str, result: FitResult) -> None:
         kept = [
@@ -107,6 +126,34 @@ class AppState(QObject):
     def clear_fits(self, key: str) -> None:
         if self._fits.pop(key, None) is not None:
             self.fits_changed.emit(key)
+
+    # ---- regions of interest (edited through ui.roi_controller, with undo)
+    def rois(self, key: str) -> list[Roi]:
+        return list(self._rois.get(key, {}).values())
+
+    def roi(self, key: str, roi_id: str) -> Roi | None:
+        return self._rois.get(key, {}).get(roi_id)
+
+    def put_roi(self, roi: Roi) -> None:
+        self._rois.setdefault(roi.data_sha256, {})[roi.roi_id] = roi
+        self.rois_changed.emit(roi.data_sha256)
+
+    def remove_roi(self, key: str, roi_id: str) -> None:
+        if self._rois.get(key, {}).pop(roi_id, None) is not None:
+            self.rois_changed.emit(key)
+
+    # ---- reference libraries and line assignments
+    def add_library(self, library: ReferenceLibrary) -> None:
+        self.libraries.append(library)
+        self.libraries_changed.emit()
+
+    def record_assignment(self, key: str, decision: dict[str, object]) -> None:
+        """Append an analyst's accept / reject decision on a line assignment."""
+        self._assignments.setdefault(key, []).append(dict(decision))
+        self.assignments_changed.emit(key)
+
+    def assignments(self, key: str) -> list[dict[str, object]]:
+        return list(self._assignments.get(key, []))
 
     def entry(self, key: str) -> Entry | None:
         return next((e for e in self.all_entries() if e.key == key), None)

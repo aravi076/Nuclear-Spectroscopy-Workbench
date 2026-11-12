@@ -29,8 +29,8 @@ G = [100 + (i * 7) % 50 for i in range(256)]
 G_EARLY = [c // 2 for c in G]
 BG1 = [(i * 11) % 40 + 1 for i in range(256)]
 BG2 = [(i * 13) % 40 + 2 for i in range(256)]
-T_G = "Mon Apr 27 14:49:03 GMT+0530 2026"
-T_B1 = "Mon Apr 27 16:00:00 GMT+0530 2026"
+T_G = "Tue Mar 10 09:15:27 GMT+0530 2026"
+T_B1 = "Tue Mar 10 16:00:00 GMT+0530 2026"
 T_B2 = "Tue Apr 28 09:00:00 GMT+0530 2026"
 
 

@@ -29,7 +29,7 @@ On a continuum-dominated background V grows like s, so S is largest for s = sqrt
 the scale that detects a peak best is about 2.2 times wider than the peak, and the
 detecting scale is therefore *not* a width estimate. A coarse ladder of scales is enough.
 
-Limitations (see docs/scientific_methodology.md, section 7)
+Limitations (see docs/science/scientific_methodology.md, section 7)
 ----------------------------------------------------------
 * V uses the per-channel variance estimate of the spectrum (observed counts for count
   data). In regions with very few counts S is not normally distributed, and where all
@@ -49,7 +49,6 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.signal import find_peaks
 
 from nsw.core.errors import ProcessingError
 from nsw.core.spectrum import Spectrum
@@ -197,6 +196,10 @@ class _Raw:
 
 def find_peak_candidates(spectrum: Spectrum, settings: PeakSearchSettings) -> PeakSearchResult:
     """Search ``spectrum`` for peak candidates. The spectrum is not modified."""
+    # imported on use: scipy.signal loads scipy.stats and scipy.interpolate, about 1.7 s
+    # of the application's start time otherwise (recommendation R1)
+    from scipy.signal import find_peaks
+
     n = spectrum.n_channels
     first = settings.first_channel if settings.first_channel is not None else spectrum.first_channel
     last = (
@@ -271,7 +274,7 @@ def find_peak_candidates(spectrum: Spectrum, settings: PeakSearchSettings) -> Pe
         channel = position + spectrum.first_channel
         energy = None
         if verified:
-            assert spectrum.energy_calibration is not None
+            assert spectrum.energy_calibration is not None  # noqa: S101 - type narrowing: verified implies a calibration is attached
             energy = float(spectrum.energy_calibration.energy_at(channel))
         built.append(
             PeakCandidate(

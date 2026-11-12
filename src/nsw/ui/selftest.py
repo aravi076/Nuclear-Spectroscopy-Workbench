@@ -21,7 +21,7 @@ from PySide6.QtWidgets import QApplication
 from nsw.config import PathSettings, Settings
 from nsw.services import peaks as peaks_service
 from nsw.services import selftest_data
-from nsw.ui.main_window import MainWindow
+from nsw.ui.main_window import PAGE_IDENTIFICATION, MainWindow
 
 
 def _wait(app: QApplication, done: Callable[[], bool], timeout: float = 120.0) -> None:
@@ -104,7 +104,7 @@ def run(app: QApplication, folder: Path) -> int:
         problems = window.project_page.problems.toPlainText()
         step("project reopen", reopened and not problems, window.project_page.status_label.text())
 
-        window.nav.setCurrentRow(9)  # Nuclide Identification page: report of its spectrum
+        window.nav.setCurrentRow(PAGE_IDENTIFICATION)  # report of its spectrum
         window.identification_page.select(entries["syn-x-sample"].key)
         pdf = folder / "selftest-report.pdf"
         svg = folder / "selftest-figure.svg"

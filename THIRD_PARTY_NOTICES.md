@@ -28,7 +28,7 @@ Licences as declared in the metadata of the versions installed on 2026-11-11.
 
 Qt for Python is used under the LGPL-3.0 option: NSW imports it as a separately
 installed library and does not modify or statically link it. The Windows build
-(`packaging/nsw.spec`, one folder) keeps the Qt libraries as separate, replaceable
+(`packaging/windows/NSW.spec`, one folder) keeps the Qt libraries as separate, replaceable
 DLLs. The PySide6 wheels used for the build contain no LGPL text, so **before an
 executable is distributed** the texts of the LGPL-3.0 and GPL-3.0
 (https://www.gnu.org/licenses/lgpl-3.0.txt, https://www.gnu.org/licenses/gpl-3.0.txt)

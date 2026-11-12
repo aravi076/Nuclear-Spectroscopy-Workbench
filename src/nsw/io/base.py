@@ -73,7 +73,7 @@ _LYNX_TIME = re.compile(
 
 
 def parse_lynx_timestamp(text: str) -> datetime:
-    """Parse e.g. ``Mon Apr 27 14:49:03 GMT+0530 2026`` into a timezone-aware datetime.
+    """Parse e.g. ``Tue Mar 10 09:15:27 GMT+0530 2026`` into a timezone-aware datetime.
 
     Parsed by hand so that the result does not depend on the process locale.
     """

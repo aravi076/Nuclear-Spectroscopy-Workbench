@@ -13,11 +13,15 @@ import textwrap
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
-from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib.figure import Figure
 from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    # Matplotlib is imported when a report or figure is written, not at start-up
+    # (about 3.5 s of import time; recommendation R1).
+    from matplotlib.figure import Figure
 
 PAGE = (8.27, 11.69)  # A4 portrait, inches
 MARGIN_X = 0.07
@@ -97,6 +101,8 @@ def draw_spectrum(
 
 def write_figure(spec: SpectrumFigure, path: Path, banner: str = "") -> Path:
     """Spectrum figure in the format given by the file suffix (.svg, .pdf, .png)."""
+    from matplotlib.figure import Figure
+
     fig = Figure(figsize=(10, 5))
     draw_spectrum(fig, spec, (0.08, 0.12, 0.88, 0.76))
     if banner:
@@ -148,6 +154,9 @@ def _lines(section: Section) -> list[tuple[str, str]]:
 
 def write_pdf(report: Report, path: Path) -> Path:
     """Write ``report`` as an A4 PDF. Returns the path."""
+    from matplotlib.backends.backend_pdf import PdfPages
+    from matplotlib.figure import Figure
+
     colour = BANNER_COLOURS.get(report.banner_kind, "#333333")
     with PdfPages(path, metadata={"Title": report.title, "Creator": "NSW",
                                   "CreationDate": None}) as pdf:  # fmt: skip

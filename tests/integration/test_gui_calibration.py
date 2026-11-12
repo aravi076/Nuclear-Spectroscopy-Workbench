@@ -49,9 +49,9 @@ def window(app: QApplication, tmp_path: Path) -> Iterator[MainWindow]:
     root = tmp_path / "experimental"
     root.mkdir()
     times = (
-        "Mon Apr 27 10:00:00 GMT+0530 2026",
-        "Mon Apr 27 12:00:00 GMT+0530 2026",
-        "Mon Apr 27 14:00:00 GMT+0530 2026",
+        "Tue Mar 10 10:00:00 GMT+0530 2026",
+        "Tue Mar 10 12:00:00 GMT+0530 2026",
+        "Tue Mar 10 14:00:00 GMT+0530 2026",
     )
     (root / "run A.csv").write_bytes(
         b.lynx_csv(spectrum_counts(), start=times[0], live=1000, real=1001.5)

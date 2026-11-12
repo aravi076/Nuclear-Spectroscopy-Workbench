@@ -1,1 +1,1 @@
-"""NSW reporting package (see docs/architecture.md)."""
+"""NSW reporting package (see docs/design/architecture.md)."""

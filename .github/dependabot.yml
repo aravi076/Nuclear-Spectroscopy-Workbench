@@ -1,0 +1,25 @@
+# Dependency update proposals (R6). Every update arrives as a pull request that must
+# pass the test workflow, including the validation run; nothing is merged automatically.
+version: 2
+updates:
+  - package-ecosystem: "uv"  # reads pyproject.toml and uv.lock
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      # test and lint tools together; scientific and GUI libraries one by one, because
+      # a change there can alter numerical results and must be reviewed on its own
+      development-tools:
+        patterns:
+          - "pytest*"
+          - "ruff"
+          - "mypy"
+          - "hypothesis"
+          - "pip-audit"
+          - "types-*"
+          - "pyinstaller"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

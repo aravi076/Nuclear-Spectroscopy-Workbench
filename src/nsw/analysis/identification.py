@@ -88,8 +88,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 import numpy as np
-from scipy.stats import chi2 as chi2_distribution
 
+from nsw.analysis.distributions import chi2_sf
 from nsw.analysis.efficiency import EfficiencyCurve
 from nsw.core.errors import ProcessingError
 from nsw.core.nuclear_data import GammaRecord, NuclideRecord
@@ -347,7 +347,7 @@ def _intensity_test(
     mean = float(ones @ v_inv @ y) / float(ones @ v_inv @ ones)
     r = y - mean
     chi2 = float(r @ v_inv @ r)
-    p_value = float(chi2_distribution.sf(chi2, n - 1))
+    p_value = float(chi2_sf(chi2, n - 1))
     return IntensityTest(chi2, n - 1, p_value, p_value >= p_min, tuple(energies))
 
 

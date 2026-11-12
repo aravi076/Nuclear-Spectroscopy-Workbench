@@ -116,7 +116,7 @@ def result_label(spectrum: Spectrum) -> str:
 
 
 def load_reference_file(path: Path) -> ReferenceLibrary:
-    """Read an NSW reference-data file (see docs/nuclear_data.md)."""
+    """Read an NSW reference-data file (see docs/science/nuclear_data.md)."""
     return load_library(Path(path).stem, [JsonFileProvider(Path(path))])
 
 

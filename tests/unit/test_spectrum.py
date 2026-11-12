@@ -149,14 +149,14 @@ def test_missing_metadata_is_reported_not_invented() -> None:
         "sample name",
         "verified energy calibration",
     )
-    full = make_raw(start_time=datetime(2026, 4, 27, 14, 49, 3), detector_id="d1", sample_name="x")
+    full = make_raw(start_time=datetime(2026, 3, 10, 9, 15, 27), detector_id="d1", sample_name="x")
     assert full.missing_metadata() == ("verified energy calibration",)
 
 
 def test_start_time_local_drops_zone_only() -> None:
     ist = timezone(timedelta(hours=5, minutes=30))
-    s = make_raw(start_time=datetime(2026, 4, 27, 14, 49, 3, tzinfo=ist))
-    assert s.start_time_local == datetime(2026, 4, 27, 14, 49, 3)
+    s = make_raw(start_time=datetime(2026, 3, 10, 9, 15, 27, tzinfo=ist))
+    assert s.start_time_local == datetime(2026, 3, 10, 9, 15, 27)
 
 
 # ---- immutability ----------------------------------------------------------------

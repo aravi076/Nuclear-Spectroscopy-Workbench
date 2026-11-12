@@ -3,7 +3,7 @@
 NSW is a Windows desktop application and Python library for analysing gamma-ray
 spectra from HPGe and NaI(Tl) detectors.
 
-**Status: development towards v1.0 (`0.9.0.dev0`; last release `v0.1.0-alpha`).**
+**Status: beta candidate (`0.9.0.dev0`; last release `v0.1.0-alpha`).**
 The calculation engines are tested against synthetic spectra with known ground truth. Nothing in this repository is an
 experimentally validated measurement result; see
 [Scientific limitations](#scientific-limitations).
@@ -38,22 +38,30 @@ NSW aims to make that chain explicit and checkable:
 | Measurement identity (duplicate exports, intermediate saves of one acquisition), SHA-256 integrity manifests | yes | yes: Project Dashboard |
 | Detector profiles for HPGe and NaI(Tl), kept separate | yes | shown in the Spectrum Explorer |
 | Interactive spectrum viewer (overlay, log axis, count rate, metadata, export) | – | yes: Spectrum Explorer |
+| Mouse-driven analysis: navigate / zoom-box / region / select modes, regions of interest drawn and edited on the plot, undo/redo, context menu, shortcuts | yes (`nsw.services.roi`) | yes: Spectrum Explorer → Regions of interest |
+| Automatic peak search when a spectrum is opened; candidates classed strong / weak / doubtful / not photopeak-like; exclude and restore | yes | yes: Regions of interest |
+| Region fitting, residuals, nested continuum-model comparison | yes | yes: Regions of interest |
+| Decision threshold, detection limit and coverage interval: ISO 11929 framework or Currie, selectable; from counts or from the peak fit | yes (Monte Carlo validated; ISO conformity not claimed) | yes: Regions of interest |
+| Optional HPGe low-energy tail (Gaussian + exponential tail), bootstrap-calibrated model test | yes, partly validated; informational | yes: Advanced mode |
 | Background subtraction with live-time scaling and compatibility checks | yes | yes: Background Subtraction |
 | Peak detection (second-derivative filter, significance, several scales) | yes | yes: Peak Analysis |
 | Peak fitting (Poisson likelihood, least squares, joint gross + background; covariance, goodness of fit, multiplet evidence) | yes | yes: Peak Fitting |
-| Energy calibration (effective-variance regression, order test, valid range, position stability) | yes | yes: Energy Calibration |
+| Energy calibration (effective-variance regression, order test, valid range, position stability); suggested line assignments from a library and an approximate gain; duplicate, coverage and outlier checks | yes | yes: Energy Calibration |
 | Detector resolution model FWHM² = a + bx + cx² | yes | yes: Resolution Analysis |
 | Decay correction, full-energy-peak efficiency curve, activity | yes, on synthetic sources only | yes: Efficiency Calibration, Activity Calculation (refused for experimental spectra, with the list of missing inputs) |
 | Nuclide candidates ranked against a reference library | yes, with a fictitious test library only | yes: Nuclide Identification (candidates with evidence, never an identification) |
+| Nuclear Data Explorer: libraries with full provenance, evaluation differences, reference lines on spectra with a verified calibration, peak-to-line matching with accept / reject | yes | yes: Nuclear Data Explorer |
+| Guided workflow (twelve stages with status and reasons), Beginner and Advanced modes | yes (`nsw.services.workflow`) | yes: panel under the page list |
 | Synthetic spectrum generator with stored ground truth (HPGe-like and NaI-like) | yes | generated files can be opened |
-| Project file (SQLite, append-only history, fits reproduced on reopening) | yes | yes: Project File |
+| Project file (SQLite, append-only history, fits reproduced on reopening, analyst decisions and regions saved, result digests verified, file names only) | yes | yes: Project File |
 | PDF analysis reports; SVG, PDF or PNG figures | yes | File menu |
 | Consolidated synthetic validation with pass criteria and repeatability | yes (`scripts/run_validation.py`) | — |
-| Windows executable with end-to-end self-test | yes (`packaging/nsw.spec`, `NSW.exe --self-test`) | — |
+| Windows installer (per user, no administrator rights) with licences and synthetic demo spectra; executable self-test | yes (`packaging/windows/`, `scripts/build_windows.ps1`) | — |
 
 A "calculation engine" is a tested module that can be called from Python. A "desktop
-page" is reachable in the application; the eleven pages are exercised by automated
-interface tests and the self-test, not yet by systematic manual testing.
+page" is reachable in the application; the twelve pages are exercised by automated
+interface tests (including synthesised mouse and keyboard input) and the self-test, not
+yet by a recorded manual walk-through ([docs/reports/UX_TEST_REPORT.md](docs/reports/UX_TEST_REPORT.md)).
 
 ## Screenshots
 
@@ -76,10 +84,9 @@ interface tests and the self-test, not yet by systematic manual testing.
 | PySide6 (Qt for Python), PyQtGraph | desktop interface, interactive plots |
 | SQLite (Python standard library) | project files |
 | Matplotlib | PDF reports and figures |
-| PyInstaller | Windows executable |
-| pytest, pytest-cov, Ruff, MyPy (strict) | tests, lint, static types |
-
-Declared as a dependency but not used by the code: pandas (to be removed).
+| PyInstaller, Inno Setup | Windows executable and installer |
+| uv (`uv.lock`) | locked, reproducible environments |
+| pytest, pytest-qt, Hypothesis, pytest-cov, Ruff (incl. security rules), MyPy (strict), pip-audit | tests, lint, static types, dependency audit |
 
 ## Architecture
 
@@ -99,19 +106,22 @@ ui  ->  services  ->  analysis / simulation / io / detectors  ->  core
 
 A test inspects the imports: the scientific packages never import Qt or configuration,
 and the interface calls `services` only. Details:
-[docs/architecture.md](docs/architecture.md),
+[docs/design/architecture.md](docs/design/architecture.md),
 [TECHNICAL_DECISIONS.md](TECHNICAL_DECISIONS.md).
 
-## Installation (Windows, PowerShell)
+## Installation
 
-Requires Python 3.11 or later (developed and tested with 3.12) and
+**Windows installer:** download `NSW-Setup-<version>-x64.exe` and `SHA256SUMS.txt`
+from the release page; see [docs/user/WINDOWS_INSTALLER.md](docs/user/WINDOWS_INSTALLER.md)
+(the installer is not code-signed).
+
+**From source (Windows, PowerShell)** requires Python 3.11 or later (developed and tested with 3.12) and
 [uv](https://docs.astral.sh/uv/).
 
 ```powershell
 git clone <repository-url>
 cd Nuclear-Spectroscopy-Workbench
-uv venv --python 3.12 .venv
-uv pip install --python .venv\Scripts\python.exe -e ".[gui,dev]"
+uv sync --locked --all-extras
 .venv\Scripts\python.exe -m pytest
 ```
 
@@ -131,7 +141,10 @@ Create example spectra and start the application:
    For your own Lynx files use *Open experimental dataset folder…*; the folder is only
    read. The dashboard reports what was imported and what NSW noticed about the files.
 2. **Inspect.** *Spectrum Explorer*: select a spectrum to plot it, several to overlay
-   them; the tabs show metadata, detector settings, file hashes and warnings.
+   them; the tabs show metadata, detector settings, file hashes and warnings. Peak
+   candidates are found and marked automatically. Press **R** and drag to mark a region,
+   **F** to fit it; the *Regions of interest* tab shows net counts, fit, residuals and
+   detection limits (ISO 11929 or Currie). The workflow panel suggests the next step.
 3. **Background subtraction.** Designate a measurement as background (right-click in
    the explorer; synthetic background spectra are offered directly), then on
    *Background Subtraction* choose gross spectrum and background and press
@@ -148,15 +161,16 @@ Create example spectra and start the application:
 8. **Efficiency and activity.** Open `data\synthetic\sources`, fit the peaks of
    `syn-cal-source` and `syn-x-sample`, then use *Efficiency Calibration* and *Activity
    Calculation* with the fictitious sources SYN-CAL and SYN-X.
-9. **Nuclide candidates.** *Nuclide Identification* ranks library nuclides against the
-   fitted peaks of a calibrated spectrum.
+9. **Nuclear data and candidates.** *Nuclear Data Explorer* shows library records with
+   their provenance and draws reference lines on calibrated spectra; *Nuclide
+   Identification* ranks library nuclides against the fitted peaks.
 10. **Save and report.** *File → New project…*, *Save session to project*; *File → Export
     analysis report (PDF)…*.
 
 `python -m nsw.ui.app --self-test FOLDER` (or `NSW.exe --self-test FOLDER`) runs the whole
 workflow on generated spectra and writes `FOLDER\selftest.log`.
 
-Full guide: [docs/user_manual.md](docs/user_manual.md).
+Full guide: [docs/user/user_manual.md](docs/user/user_manual.md).
 
 As a library:
 
@@ -175,12 +189,12 @@ for outcome in fit_candidates(spectrum, search):
 
 ## Testing and validation
 
-Run of 2026-11-12 in this repository (Windows 11, CPython 3.12, fresh environment):
+Run of 2026-11-12 in this repository (Windows 11, CPython 3.12, environment from `uv.lock`):
 
 | Check | Result |
 |---|---|
-| `pytest` | 430 passed, 0 failed, 0 skipped (231 unit, 41 integration, 158 validation) |
-| Coverage of non-GUI code | 97 % |
+| `pytest` | 558 passed, 0 failed (318 unit, 63 integration, 177 validation) |
+| Coverage of non-GUI code | 92 % (unit and validation tests without the slow Monte Carlo runs) |
 | `ruff check`, `ruff format --check` | clean |
 | `mypy --strict` on `src/nsw` | clean |
 
@@ -196,10 +210,10 @@ Run of 2026-11-12 in this repository (Windows 11, CPython 3.12, fresh environmen
 
 An independent review of the efficiency, activity and nuclide-candidate code found
 and led to the correction of fifteen defects; what remains open is listed in
-[docs/REVIEW_PHASE8_9.md](docs/REVIEW_PHASE8_9.md).
+[docs/reports/REVIEW_PHASE8_9.md](docs/reports/REVIEW_PHASE8_9.md).
 
 Numbers and methods: [VALIDATION_REPORT.md](VALIDATION_REPORT.md),
-[docs/scientific_methodology.md](docs/scientific_methodology.md).
+[docs/science/scientific_methodology.md](docs/science/scientific_methodology.md).
 
 ## Scientific limitations
 
@@ -209,9 +223,12 @@ Numbers and methods: [VALIDATION_REPORT.md](VALIDATION_REPORT.md),
   energies are confirmed. Such spectra are shown in channel units.
 - **Gain drift is not modelled.** A calibration has no validity period in time; one
   calibration cannot be assumed to serve every acquisition.
-- **No low-energy tail in the peak model.** Strong HPGe peaks are reported as poor fits.
-- Weak peaks fitted with free position and width are biased high; decision thresholds
-  and detection limits are not implemented.
+- **The low-energy tail model is optional and informational.** Strong HPGe peaks fitted
+  with the Gaussian model are reported as poor fits; the tail model is validated only
+  on part of the planned grid and its fits are not stored in projects.
+- Weak peaks fitted with free position and width are biased high. Decision thresholds
+  and detection limits follow the ISO 11929 framework or Currie; conformity with the
+  standard has not been verified against its text or an independent implementation.
 - **Experimental efficiency and activity are blocked.** They need certified source
   activities with reference dates, the source-detector geometry and the detector
   model. Without them the engines refuse measured spectra.
@@ -219,9 +236,10 @@ Numbers and methods: [VALIDATION_REPORT.md](VALIDATION_REPORT.md),
 - **No experimental NaI(Tl) validation.** NaI(Tl) support is tested on simulations only.
 - **Nuclear-data integration is pending.** NSW ships no decay data; the identification
   engine is tested with an explicitly fictitious library. Real data (DDEP, ENSDF) must
-  be imported by the user with their provenance ([docs/nuclear_data.md](docs/nuclear_data.md)).
-- The executable is built and self-tested but not yet installed on a separate clean
-  machine, and is not distributed (LGPL texts must be added first).
+  be imported by the user with their provenance ([docs/science/nuclear_data.md](docs/science/nuclear_data.md)).
+- The installer passes its automated install / self-test / uninstall check on the
+  development PC; a test on a clean machine (no Python) is pending, and it is not
+  code-signed.
 
 ## Roadmap
 
@@ -232,18 +250,23 @@ Numbers and methods: [VALIDATION_REPORT.md](VALIDATION_REPORT.md),
 | Peak search and fitting, energy calibration, resolution | done (engine and page) |
 | Efficiency, activity, nuclide candidates | done (engines and pages; synthetic data only) |
 | Validation runner, project database, reports | done |
-| Windows executable | built and self-tested; clean-machine installation pending |
-| External benchmark datasets | surveyed (`docs/external_dataset_discovery.md`); none adopted yet |
+| Interactive analysis (regions, automatic search, model comparison, Nuclear Data Explorer, assisted calibration, workflow, modes) | done; manual walk-through pending |
+| Detection limits (ISO 11929 framework / Currie), HPGe tail model | implemented; independent comparison and full tail validation pending |
+| Windows installer | built and smoke-tested; clean-machine test pending |
+| External benchmark datasets | surveyed (`docs/science/external_dataset_discovery.md`); none adopted yet |
 
-Details: [docs/ROADMAP.md](docs/ROADMAP.md), [docs/POST_V1_ROADMAP.md](docs/POST_V1_ROADMAP.md). Changes: [CHANGELOG.md](CHANGELOG.md).
+Details: [docs/design/ROADMAP.md](docs/design/ROADMAP.md), [docs/design/POST_V1_ROADMAP.md](docs/design/POST_V1_ROADMAP.md). Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## Documentation
 
-- [docs/user_manual.md](docs/user_manual.md), [docs/installation.md](docs/installation.md)
-- [docs/architecture.md](docs/architecture.md), [docs/file_formats.md](docs/file_formats.md)
-- [docs/scientific_methodology.md](docs/scientific_methodology.md),
+- [docs/README.md](docs/README.md) (index)
+- [docs/graph/](docs/graph/) — interactive map of the code (HTML, opens in a browser)
+- [docs/user/user_manual.md](docs/user/user_manual.md), [docs/user/installation.md](docs/user/installation.md),
+  [docs/user/WINDOWS_INSTALLER.md](docs/user/WINDOWS_INSTALLER.md)
+- [docs/design/architecture.md](docs/design/architecture.md), [docs/user/file_formats.md](docs/user/file_formats.md)
+- [docs/science/scientific_methodology.md](docs/science/scientific_methodology.md),
   [VALIDATION_REPORT.md](VALIDATION_REPORT.md)
-- [docs/nuclear_data.md](docs/nuclear_data.md), [DATA_LICENSES.md](DATA_LICENSES.md),
+- [docs/science/nuclear_data.md](docs/science/nuclear_data.md), [DATA_LICENSES.md](DATA_LICENSES.md),
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 - [TECHNICAL_DECISIONS.md](TECHNICAL_DECISIONS.md), [CONTRIBUTING.md](CONTRIBUTING.md),
   [SECURITY.md](SECURITY.md)

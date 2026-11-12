@@ -23,8 +23,8 @@ was not modified by this work, apart from new commits that record this preparati
 | Configuration | `pyproject.toml`, `.gitignore`, `config/nsw.example.yaml` (placeholder paths) |
 | Placeholders | empty `data/reference/`, `data/synthetic/`, `reports/` |
 
-Existing document names were kept (`docs/installation.md`, `docs/architecture.md`,
-`docs/scientific_methodology.md`, `VALIDATION_REPORT.md`) instead of creating
+Existing document names were kept (`docs/user/installation.md`, `docs/design/architecture.md`,
+`docs/science/scientific_methodology.md`, `VALIDATION_REPORT.md`) instead of creating
 duplicates under other names.
 
 ## 3. Files excluded
@@ -100,7 +100,7 @@ not import yet; the README says so.
 
 No nuclear decay data are included. DDEP (LNE-LNHB) and ENSDF (NNDC) publish citation
 rules but no redistribution licence on their sites (checked 2026-11-11), so neither is
-bundled or downloaded; users import their own files (`docs/nuclear_data.md`,
+bundled or downloaded; users import their own files (`docs/science/nuclear_data.md`,
 `DATA_LICENSES.md`). Test nuclides are fictitious and labelled.
 
 ## 9. Test results from the cleaned copy (2026-11-11)
@@ -144,7 +144,7 @@ Experimental validation: none in this repository.
    addresses private" and "Block command line pushes that expose my email".
 3. The independent review of the efficiency, activity and identification engines was
    completed after first publication; its corrections are the second commit and its
-   open findings are in `docs/REVIEW_PHASE8_9.md`.
+   open findings are in `docs/reports/REVIEW_PHASE8_9.md`.
 4. Interface tests are programmatic; systematic manual testing is outstanding.
 
 ## 12. Publishing (after approval)
@@ -165,7 +165,7 @@ git push -u origin main
 git tag -a v0.1.0-alpha -m "NSW v0.1.0-alpha"
 git push origin v0.1.0-alpha
 #    on GitHub: Releases > Draft a new release > tag v0.1.0-alpha > paste
-#    docs/RELEASE_NOTES_v0.1.0-alpha.md > tick "This is a pre-release"
+#    docs/release/RELEASE_NOTES_v0.1.0-alpha.md > tick "This is a pre-release"
 ```
 
 After publishing, enable "Private vulnerability reporting" in the repository's

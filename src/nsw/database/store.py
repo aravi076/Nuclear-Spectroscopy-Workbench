@@ -15,6 +15,9 @@ analysis_run         every analysis result (peak search, fit, identification, ..
                      data were synthetic
 reference_dataset    nuclear-data libraries imported into the project, with provenance
 audit_log            what was done to the project, when
+decision_event       (schema 2) analyst decisions as an ordered event log: regions of
+                     interest created, edited or deleted, candidates excluded or
+                     added, assignments accepted or rejected, model choices
 
 Rules
 -----
@@ -28,6 +31,7 @@ Rules
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import sqlite3
@@ -51,7 +55,7 @@ from nsw.core.spectrum import (
     SpectrumKind,
 )
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 APPLICATION_ID = 0x4E535731  # "NSW1": marks the file as an NSW project
 RESULT_TABLES = (
     "measurement",
@@ -61,6 +65,7 @@ RESULT_TABLES = (
     "reference_dataset",
     "audit_log",
 )
+V2_TABLES = ("decision_event",)
 
 _SCHEMA = """
 CREATE TABLE schema_version (version INTEGER NOT NULL, applied TEXT NOT NULL);
@@ -131,10 +136,25 @@ CREATE INDEX analysis_by_spectrum ON analysis_run (data_sha256, kind);
 CREATE INDEX calibration_by_spectrum ON calibration (data_sha256, kind);
 """
 
+# Schema 2 (additive): analyst decisions. ``subject`` names what the decision is about
+# (e.g. "roi:<id>", "candidate:<channel>"), ``value`` is a JSON object.
+_SCHEMA_V2 = """
+CREATE TABLE decision_event (
+    id INTEGER PRIMARY KEY,
+    at TEXT NOT NULL,
+    data_sha256 TEXT REFERENCES measurement (data_sha256),
+    subject TEXT NOT NULL,
+    action TEXT NOT NULL,
+    value TEXT NOT NULL DEFAULT '{}',
+    note TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX decision_by_spectrum ON decision_event (data_sha256, subject);
+"""
 
-def _append_only_triggers() -> str:
+
+def _append_only_triggers(tables: Sequence[str] = RESULT_TABLES + V2_TABLES) -> str:
     statements = []
-    for table in RESULT_TABLES:
+    for table in tables:
         for op in ("UPDATE", "DELETE"):
             statements.append(
                 f"CREATE TRIGGER {table}_no_{op.lower()} BEFORE {op} ON {table} "
@@ -162,6 +182,17 @@ class StoredRun:
 
 
 @dataclass(frozen=True, slots=True)
+class StoredDecision:
+    id: int
+    at: str
+    data_sha256: str | None
+    subject: str
+    action: str
+    value: dict[str, Any]
+    note: str
+
+
+@dataclass(frozen=True, slots=True)
 class StoredCalibration:
     id: int
     kind: str
@@ -172,6 +203,15 @@ class StoredCalibration:
     summary: dict[str, Any]
     software: str
     created: str
+
+
+def canonical_digest(value: Any) -> str:
+    """SHA-256 of the canonical JSON of a result as the store keeps it (sorted keys,
+    non-finite numbers in their stored form). Identical results give identical digests."""
+    text = json.dumps(
+        json.loads(_json(value)), sort_keys=True, ensure_ascii=False, separators=(",", ":")
+    )
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def _now() -> str:
@@ -241,7 +281,9 @@ def _spectrum_record(s: Spectrum) -> dict[str, Any]:
         ),
         "source": (
             {
-                "path": s.source.path,
+                # the file name only: a full path can contain the user's name
+                # (docs/design/SCIENTIFIC_PROVENANCE_DESIGN.md §7, owner decision)
+                "path": s.source.filename,
                 "filename": s.source.filename,
                 "size_bytes": s.source.size_bytes,
                 "sha256": s.source.sha256,
@@ -327,7 +369,7 @@ class ProjectStore:
         try:
             db.execute("PRAGMA foreign_keys = ON")
             db.execute(f"PRAGMA application_id = {APPLICATION_ID}")
-            db.executescript(_SCHEMA + _append_only_triggers())
+            db.executescript(_SCHEMA + _SCHEMA_V2 + _append_only_triggers())
             with db:
                 db.execute("INSERT INTO schema_version VALUES (?, ?)", (SCHEMA_VERSION, _now()))
                 db.execute(
@@ -369,10 +411,36 @@ class ProjectStore:
             )
         db.execute("PRAGMA foreign_keys = ON")
         store = cls(path, db)
-        if version < SCHEMA_VERSION:  # pragma: no cover - no older schema exists yet
+        if version < SCHEMA_VERSION:
             store.backup(store._backup_name(f"before-schema-{SCHEMA_VERSION}"))
+            store._migrate(version)
         store.log("open", f"schema {version}")
         return store
+
+    def _migrate(self, version: int) -> None:
+        """Bring an older file to the current schema in one transaction (after a backup)."""
+        if version == 1:
+            # executescript commits on its own; one explicit transaction so that a failure
+            # leaves the file at schema 1 (and the backup exists in any case)
+            script = "\n".join(
+                [
+                    "BEGIN;",
+                    _SCHEMA_V2,
+                    _append_only_triggers(V2_TABLES),
+                    "INSERT INTO schema_version VALUES "
+                    "(2, strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now'));",
+                    "COMMIT;",
+                ]
+            )
+            try:
+                self._db.executescript(script)
+            except sqlite3.Error as exc:
+                self._db.rollback()
+                raise ProjectStoreError(f"migration to schema 2 failed: {exc}") from exc
+            self.log("migrate", "schema 1 -> 2: decision_event added")
+            version = 2
+        if version != SCHEMA_VERSION:  # pragma: no cover - guards future schema steps
+            raise ProjectStoreError(f"no migration from schema {version}")
 
     def close(self) -> None:
         self._db.close()
@@ -598,6 +666,46 @@ class ProjectStore:
                 ),
             )
         return int(cur.lastrowid or 0)
+
+    # ------------------------------------------------------------------ decisions
+    def add_decision(
+        self,
+        subject: str,
+        action: str,
+        *,
+        data_sha256: str | None,
+        value: Mapping[str, Any] | None = None,
+        note: str = "",
+    ) -> int:
+        """Append an analyst decision; returns its id. Decisions are never changed."""
+        if not subject.strip() or not action.strip():
+            raise ProjectStoreError("a decision needs a subject and an action")
+        if data_sha256 is not None and not self.has_spectrum(data_sha256):
+            raise ProjectStoreError("store the spectrum before decisions about it")
+        with self._db:
+            cur = self._db.execute(
+                "INSERT INTO decision_event (at, data_sha256, subject, action, value, note) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (_now(), data_sha256, subject, action, _json(dict(value or {})), note),
+            )
+        return int(cur.lastrowid or 0)
+
+    def decisions(
+        self, data_sha256: str | None = None, subject_prefix: str | None = None
+    ) -> list[StoredDecision]:
+        query = "SELECT id, at, data_sha256, subject, action, value, note FROM decision_event"
+        query += " WHERE 1 = 1"
+        args: list[Any] = []
+        if data_sha256 is not None:
+            query += " AND data_sha256 = ?"
+            args.append(data_sha256)
+        if subject_prefix is not None:
+            query += " AND substr(subject, 1, ?) = ?"
+            args += [len(subject_prefix), subject_prefix]
+        return [
+            StoredDecision(r[0], r[1], r[2], r[3], r[4], _unjson(r[5]), r[6])
+            for r in self._db.execute(query + " ORDER BY id", args)
+        ]
 
     def runs(self, kind: str | None = None, data_sha256: str | None = None) -> list[StoredRun]:
         query = "SELECT id, kind, data_sha256, synthetic, label, settings, result, software, "

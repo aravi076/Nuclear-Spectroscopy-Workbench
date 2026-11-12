@@ -39,9 +39,9 @@ from dataclasses import dataclass
 from datetime import datetime
 
 import numpy as np
-from scipy.stats import chi2 as chi2_distribution
 
 from nsw.analysis import decay
+from nsw.analysis.distributions import chi2_sf
 from nsw.analysis.efficiency import EfficiencyCurve, GammaLine, MeasurementTiming
 from nsw.core.errors import ProcessingError
 from nsw.core.units import Quantity, Unit
@@ -169,7 +169,7 @@ def combine_lines(
     residuals = y - mean
     chi2 = float(residuals @ v_inv @ residuals)
     ndf = n - 1
-    p_value = float(chi2_distribution.sf(chi2, ndf)) if ndf > 0 else math.nan
+    p_value = float(chi2_sf(chi2, ndf)) if ndf > 0 else math.nan
     rel_total = math.sqrt(1.0 / norm)
     rel_stat = math.sqrt(float(weights @ v_stat @ weights))
     rel_sys = math.sqrt(max(rel_total**2 - rel_stat**2, 0.0))

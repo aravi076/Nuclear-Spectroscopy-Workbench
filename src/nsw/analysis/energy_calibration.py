@@ -43,8 +43,8 @@ from datetime import datetime
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.stats import chi2 as chi2_distribution
 
+from nsw.analysis.distributions import chi2_sf
 from nsw.core.calibration import (
     CalibrationOrigin,
     CalibrationPoint,
@@ -272,7 +272,7 @@ def fit_energy_calibration(
                 "the reference points do not determine this polynomial (ill-conditioned "
                 "normal equations); use a lower order or better separated points"
             )
-        cov_b = np.linalg.inv(normal)
+        cov_b = np.asarray(np.linalg.inv(normal), dtype=np.float64)
         new_b = cov_b @ (design.T @ (weights * y))
         c = transform @ new_b
         derivative = [j * cj for j, cj in enumerate(c)][1:]
@@ -284,7 +284,7 @@ def fit_energy_calibration(
     residuals = y - design @ b
     chi2 = float(np.sum(residuals**2 / variance))
     ndf = n - (order + 1)
-    p_value = float(chi2_distribution.sf(chi2, ndf)) if ndf > 0 else math.nan
+    p_value = float(chi2_sf(chi2, ndf)) if ndf > 0 else math.nan
 
     warnings: list[str] = []
     inflated = False
@@ -417,7 +417,7 @@ def position_stability(
     mean = float(np.sum(w * x) / np.sum(w))
     chi2 = float(np.sum(w * (x - mean) ** 2))
     ndf = int(x.size - 1)
-    p = float(chi2_distribution.sf(chi2, ndf))
+    p = float(chi2_sf(chi2, ndf))
     max_dev = float(np.max(np.abs(x - mean)))
     stable = p >= POOR_FIT_P
     statement = (

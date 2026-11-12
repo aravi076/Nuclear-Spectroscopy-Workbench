@@ -65,7 +65,7 @@ def test_report_contains_what_is_needed_to_reconstruct_the_result() -> None:
 
 
 def test_experimental_spectrum_is_labelled_provisional_and_stays_in_channels() -> None:
-    measured = make_raw(np.arange(300) % 23 + 5, start_time=datetime(2026, 4, 27, 10, 0, 0))
+    measured = make_raw(np.arange(300) % 23 + 5, start_time=datetime(2026, 3, 10, 10, 0, 0))
     report = rs.build_report(measured, created=FIXED)
     assert report.banner_kind == "provisional" and "channel units" in report.banner
     assert report.figure is not None and report.figure.x_label == "Channel"
@@ -117,7 +117,7 @@ def test_pdf_is_written_reproducibly_and_paginates(tmp_path: Path) -> None:
 def test_figures_in_three_formats_and_protected_folders(tmp_path: Path) -> None:
     spectrum, fits = spectrum_and_fits(sources.SYN_X)
     svg = rs.export_figure(spectrum, fits, tmp_path / "f.svg")
-    root = ET.parse(svg).getroot()
+    root = ET.parse(svg).getroot()  # noqa: S314 - SVG written by this test, not untrusted input
     assert root.tag.endswith("svg")
     assert rs.export_figure(spectrum, fits, tmp_path / "f.pdf").read_bytes().startswith(b"%PDF")
     assert rs.export_figure(spectrum, fits, tmp_path / "f.png").read_bytes()[:4] == b"\x89PNG"

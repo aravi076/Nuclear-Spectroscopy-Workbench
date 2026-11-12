@@ -69,11 +69,9 @@ from itertools import combinations, pairwise
 import numpy as np
 from numpy.typing import NDArray
 from scipy.special import ndtr, xlogy
-from scipy.stats import chi2 as chi2_distribution
-from scipy.stats import norm as normal_distribution
-from scipy.stats import poisson as poisson_distribution
 
 from nsw.analysis.background import check_compatibility
+from nsw.analysis.distributions import chi2_sf, normal_sf, poisson_pmf
 from nsw.analysis.peaks import PeakSearchResult
 from nsw.core.errors import ProcessingError
 from nsw.core.spectrum import Spectrum
@@ -505,7 +503,7 @@ def poisson_deviance_moments(m: Float) -> tuple[Float, Float]:
     if np.any(small):
         ms = np.maximum(m[small], _TINY)[:, None]
         n = np.arange(0.0, 241.0)[None, :]
-        pmf = poisson_distribution.pmf(n, ms)
+        pmf = poisson_pmf(n, ms)
         d = 2.0 * (ms - n + xlogy(n, n) - xlogy(n, ms))
         e1 = (pmf * d).sum(axis=1)
         e2 = (pmf * d * d).sum(axis=1)
@@ -709,7 +707,7 @@ def _build_result(
             amp_unc = math.sqrt(max(float(grad @ sub @ grad), 0.0))
         energy = None
         if verified:
-            assert spectrum.energy_calibration is not None
+            assert spectrum.energy_calibration is not None  # noqa: S101 - type narrowing: verified implies a calibration is attached
             energy = float(spectrum.energy_calibration.energy_at(mu))
         peaks.append(
             FittedPeak(
@@ -750,7 +748,7 @@ def _build_result(
         residuals = (data - expected) / np.sqrt(np.maximum(expected, _TINY))
     pearson = float(np.sum(residuals**2))
     ndf = int(x.size - int(sol.free.sum()))
-    p_value = float(chi2_distribution.sf(pearson, ndf)) if ndf > 0 else math.nan
+    p_value = float(chi2_sf(pearson, ndf)) if ndf > 0 else math.nan
     gof_method = "chi-square distribution of the Pearson statistic"
     low = int((expected < LOW_EXPECTATION).sum()) if method != "wls" else 0
     if low and method == "poisson" and ndf > 0:
@@ -759,7 +757,7 @@ def _build_result(
         z = (float(d.sum()) - (float(mean.sum()) - int(sol.free.sum()))) / math.sqrt(
             float(var.sum())
         )
-        p_value = float(normal_distribution.sf(z))
+        p_value = float(normal_sf(z))
         gof_method = (
             "deviance compared with its exact Poisson mean and variance (normal "
             f"approximation); {low} of {x.size} channels expect fewer than "
@@ -920,7 +918,7 @@ def fit_peaks_joint(
     compat = check_compatibility(gross, background)
     if not compat.ok:
         raise ProcessingError("joint fit refused: " + "; ".join(compat.errors))
-    assert gross.live_time_s is not None and background.live_time_s is not None
+    assert gross.live_time_s is not None and background.live_time_s is not None  # noqa: S101 - type narrowing: check_compatibility above requires both live times
     _check_inputs(gross, centroids, first_channel, last_channel)
     lo, hi = _region(gross, first_channel, last_channel)
     layout = _layout(len(centroids), settings)

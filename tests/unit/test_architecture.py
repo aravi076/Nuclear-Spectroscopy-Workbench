@@ -1,4 +1,4 @@
-"""The layering rule from docs/architecture.md, enforced by inspecting imports."""
+"""The layering rule from docs/design/architecture.md, enforced by inspecting imports."""
 
 from __future__ import annotations
 

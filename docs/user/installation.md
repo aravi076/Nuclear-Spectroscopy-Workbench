@@ -16,7 +16,7 @@ Estimated disk use: about 1 GB for `.venv` with all extras.
 
 ```powershell
 uv pip install --python .venv\Scripts\python.exe "pyinstaller>=6.10"
-.venv\Scripts\python.exe -m PyInstaller packaging\nsw.spec --noconfirm --distpath build\dist --workpath build\work
+.venv\Scripts\python.exe -m PyInstaller packaging\windows\NSW.spec --noconfirm --distpath build\dist --workpath build\work
 ```
 
 Output: `build\dist\NSW\NSW.exe` with its `_internal` folder (about 270 MB; copy the

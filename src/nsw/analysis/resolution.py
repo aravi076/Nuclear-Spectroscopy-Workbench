@@ -42,8 +42,8 @@ from itertools import combinations
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.stats import chi2 as chi2_distribution
 
+from nsw.analysis.distributions import chi2_sf
 from nsw.core.calibration import (
     CalibrationOrigin,
     CalibrationPoint,
@@ -212,7 +212,7 @@ def _fit_subset(
         normal = jac.T @ (jac * weights[:, None])
         if np.linalg.cond(normal) > 1e14:
             return None
-        cov = np.linalg.inv(normal)
+        cov = np.asarray(np.linalg.inv(normal), dtype=np.float64)
         step = cov @ (jac.T @ (weights * (w - model)))
         theta = theta + step
         if np.all(np.abs(step) <= 1e-12 * (np.abs(theta) + 1e-300)):
@@ -221,7 +221,7 @@ def _fit_subset(
     if np.any(theta <= 0.0) or np.any(model2 <= 0.0):
         return None
     chi2 = float(np.sum(weights * (w - np.sqrt(model2)) ** 2))
-    return theta, cov, chi2
+    return np.asarray(theta, dtype=np.float64), cov, chi2
 
 
 def fit_resolution(
@@ -274,7 +274,7 @@ def fit_resolution(
             covariance[t, s] = cov[i, j]
     fitted = (0 in terms, 1 in terms, 2 in terms)
     ndf = len(pts) - len(terms)
-    p_value = float(chi2_distribution.sf(chi2, ndf)) if ndf > 0 else math.nan
+    p_value = float(chi2_sf(chi2, ndf)) if ndf > 0 else math.nan
     warnings: list[str] = []
     dropped = [TERM_NAMES[t] for t in allowed if t not in terms]
     if dropped:

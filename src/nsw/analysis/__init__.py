@@ -1,1 +1,1 @@
-"""NSW analysis package (see docs/architecture.md)."""
+"""NSW analysis package (see docs/design/architecture.md)."""

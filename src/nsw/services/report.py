@@ -46,7 +46,7 @@ Energy calibration: E(ch) = Σ c_j ch^j by effective-variance regression; spectr
 Efficiency: ε = N / (P_γ · A₀ · D · f · t_live), D = exp(−λΔt), f = (1 − e^(−λ t_real))/(λ t_real); ln ε = Σ a_k (ln E/E₀)^k by generalised least squares.
 Activity: A = N / (ε · P_γ · t_live · D · f), combined over lines by generalised least squares with the correlated efficiency uncertainty.
 Nuclide candidates: |E_peak − E_line| ≤ k·√(u_peak² + u_line² + u_cal² + u_extra²); classes not supported / possible / probable / consistent; never an identification.
-Uncertainties are one standard uncertainty unless stated. Full description: docs/scientific_methodology.md."""
+Uncertainties are one standard uncertainty unless stated. Full description: docs/science/scientific_methodology.md."""
 
 LIMITATIONS = """\
 Peak model without low-energy tail: strong HPGe peaks can be reported as poor fits.

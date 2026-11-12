@@ -1,1 +1,1 @@
-"""NSW simulation package (see docs/architecture.md)."""
+"""NSW simulation package (see docs/design/architecture.md)."""

@@ -32,8 +32,8 @@ REAL = np.round(
     20000 * (ndtr((X + 0.5 - 200.3) / 2.0) - ndtr((X - 0.5 - 200.3) / 2.0)) + 30
 ).astype(int)
 BLANK = np.full(512, 60)
-T_S = "Mon Apr 27 14:49:03 GMT+0530 2026"
-T_B = "Mon Apr 27 16:00:00 GMT+0530 2026"
+T_S = "Tue Mar 10 09:15:27 GMT+0530 2026"
+T_B = "Tue Mar 10 16:00:00 GMT+0530 2026"
 
 
 def synthetic(name: str) -> SyntheticResult:

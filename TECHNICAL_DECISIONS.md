@@ -60,12 +60,12 @@ cross serialisation boundaries.
 Lynx CSV, Lynx XML (.ava), Canberra CAM (.cnf), plus NSW's own synthetic JSON. Generic
 CSV/TXT, SPE, CHN and MCA adapters planned in Phase 0 were *not* written: without real
 files their structure would be assumed. Such files are rejected explicitly. Supersedes
-the adapter list in docs/architecture.md.
+the adapter list in docs/design/architecture.md.
 
 ## TD-012 Measurement identity from content (2026-11-10)
 Snapshot = identical channel data; acquisition = start times within 1 s; a series is
 cumulative if no channel decreases. Only the final save of a cumulative series is an
-independent measurement. Details and limits: docs/scientific_methodology.md section 4.
+independent measurement. Details and limits: docs/science/scientific_methodology.md section 4.
 
 ## TD-013 Whole-second Lynx CSV files are treated as re-exports of CNF files (2026-11-10)
 Direct Lynx CSV exports carry microsecond real times. Seven CSV files carry whole-second
@@ -241,7 +241,7 @@ IAEA LiveChart and NuDat are interfaces to ENSDF and are refused as evaluation n
 ## TD-042 No nuclear data bundled; import by file only (2026-11-11)
 Neither lnhb.fr nor nndc.bnl.gov states redistribution terms (checked 2026-11-11), so
 NSW downloads and ships nothing and has no DDEP/ENSDF parser (no real file inspected).
-Users import an NSW reference-data file with full provenance (`docs/nuclear_data.md`).
+Users import an NSW reference-data file with full provenance (`docs/science/nuclear_data.md`).
 
 ## TD-043 Intensity convention is part of every line (2026-11-11)
 Only `photons-per-decay` is an emission probability; `relative` intensities are used
@@ -275,7 +275,7 @@ anchor area is shared by all lines on the anchor peak. Gates: a verified calibra
 never attached to an experimental spectrum, and the identification service refuses
 experimental spectra, while `EXPERIMENTAL_VERIFICATION_ENABLED` is False; fits must
 carry the spectrum's data hash. Evaluation names are stored trimmed and upper-case.
-Open findings: `docs/REVIEW_PHASE8_9.md`.
+Open findings: `docs/reports/REVIEW_PHASE8_9.md`.
 
 ## TD-049 Validation suite: checked versus characterised metrics, 5 standard errors (2026-11-11)
 A metric with an ideal value passes or fails against a five-standard-error tolerance;
@@ -299,3 +299,220 @@ One folder (not one file) keeps the Qt libraries replaceable (LGPL) and starts f
 Because the test suite is not shipped, `--self-test` exercises the real window on
 synthetic data and is the acceptance check for a build. LGPL/GPL texts must be added
 before any distribution (not yet done; nothing distributed).
+
+## TD-053 Start-up: heavy modules imported on use; probability functions from scipy.special (2026-11-12)
+Matplotlib (reports), the PyQtGraph exporter (PNG export) and `scipy.signal` (peak
+search) are imported inside the functions that need them. `scipy.stats` is no longer
+used by the application: `nsw.analysis.distributions` computes the chi-square and normal
+survival functions and the Poisson probability with `scipy.special` (`chdtrc`, `ndtr`,
+`xlogy`/`gammaln`), tested against `scipy.stats` to a relative 1e-12 (Poisson 1e-10)
+over grids including the far tails. Import of the main window: 8.8 s → 3.2 s; main
+window shown: 9.1 s → 3.6 s (`scripts/measure_startup.py`, warm runs). The remaining
+time is mostly `scipy.special`/`scipy.linalg` (0.8 s), pydantic models and PyQtGraph.
+
+## TD-054 Dependencies locked with uv; pandas removed (2026-11-12)
+`uv.lock` (46 packages) is committed; development, CI and builds install with
+`uv sync --locked --all-extras` and dependency updates are deliberate commits that pass
+the test suite and the validation runner. pandas and pandas-stubs were declared but
+never imported (searched in `src`, `tests`, `scripts`, packaging and docs; no installed
+package requires pandas) and were removed: −13 MB pandas and −1.5 MB tzdata in the
+previous build folder (269 MB).
+
+## TD-055 Pre-publication scanner; real file names and a time stamp removed from tests (2026-11-12)
+`scripts/scan_public_copy.py` searches a public candidate folder (text and binary
+files, except Git-ignored ones) and every reachable Git blob and commit for private
+patterns kept in git-ignored `local/public_scan_patterns.txt` (dataset folder name,
+owner identifiers, private dataset file names of 6+ characters, the acquisition time
+stamps found below) and for generic credentials, user-profile paths and non-no-reply
+e-mail addresses; private matches are reported by number, never echoed; exit 1 on a
+finding. Its first run on the public repository found what the manual searches had
+missed: six real dataset file names in a duration-parsing test, one real file name as a
+sample name, and the real acquisition time stamp of one file (tests, two docstrings,
+`docs/user/file_formats.md`). They were replaced in this repository by invented names and the
+invented time `Tue Mar 10 09:15:27 GMT+0530 2026`. The public repository still contains
+them in its working tree and history; the next approved transfer removes them from the
+tree. Rewriting public history is not proposed (low sensitivity; it would break the
+published tag) unless the owner asks for it.
+
+## TD-056 Security rules, test tools, Gitleaks, Inno Setup (2026-11-12)
+Ruff's `S` (Bandit) rules are enabled. Exceptions are individual and explained in the
+line: type-narrowing `assert`s in analysis code (each states the check that guarantees
+it), the AVA parser's `ElementTree` call (DOCTYPE and ENTITY are refused before parsing),
+subprocess calls with fixed argument lists, and `assert` in tests (`tests/**`, S101 only:
+it is pytest's mechanism). Two interface `assert`s became explicit `IndexError`s.
+Development extra: Hypothesis (7 property tests of exact laws: decay composition,
+background subtraction, linear calibration, distribution functions), pytest-qt
+(`qt_api = pyside6`), pytest-timeout (900 s per test), pip-audit (no known
+vulnerabilities). pytest-qt now fails a test when an exception is raised inside a Qt
+callback; this exposed a harmless pyqtgraph 0.14.0 bug (`LabelItem.sizeHint` called
+during construction), for which only the self-test test is exempted.
+Owner-approved downloads: Gitleaks 8.30.1 (official GitHub release, SHA-256 checked
+against the release checksum file; kept in `%LOCALAPPDATA%\nsw-tools`, outside the
+repository): no leaks in the Git history of either repository; working-tree hits are
+NumPy test data inside the git-ignored `.venv`. Inno Setup 6.7.3 installed per user via
+winget (installer hash verified by winget) for the Windows installer (Stage 10).
+While writing the property tests, two more real acquisition times were found in a
+validation test and replaced; every start time in the dataset's CSV files is now a
+private scan pattern, so this class of leak is caught automatically.
+
+## TD-057 Continuous integration prepared (R6) (2026-11-12)
+`.github/workflows/test.yml`: Windows / Python 3.12 and Ubuntu / Python 3.11; read-only
+token, no secrets, `pull_request` only, actions pinned to full commit SHAs
+(checkout v7.0.1, setup-uv v10.3.3, upload-artifact v7.0.2), install with
+`uv sync --locked --all-extras`; Ruff, format, MyPy, pytest with coverage, pip-audit,
+the generic part of the public-copy scan, and on Windows the 1000-trial validation with
+repeatability (tables kept 30 days). `.github/dependabot.yml`: weekly uv and Actions
+updates; test tools grouped, scientific and GUI libraries one pull request each.
+Every command was run locally, including a separate Python 3.11 environment synced from
+the lock (478 passed). On 3.11 the lock resolves older NumPy/SciPy whose type stubs
+gave five MyPy errors; fixed with explicit `float64` conversions and `tobytes()` for
+hashing (same bytes: validation digest `bc4d8bace3e63f7c` unchanged). Not yet run on
+GitHub's runners: the Linux Qt library list in particular is unverified until the first
+run. CodeQL, secret scanning and push protection are repository settings for the owner.
+
+## TD-058 Decision thresholds and detection limits: two selectable methods (2026-11-12)
+Owner's request: the analyst can choose between the ISO 11929 framework and the
+classical Currie limits. `nsw.analysis.limits` implements both for counting models
+(`CountingModel`: background, its variance, conversion factor w and u_rel(w)), the ISO
+coverage interval with the prior ỹ ≥ 0, and refuses settings outside 0 < α, β, γ < 0.5.
+Default `iso11929` with α = β = γ = 0.05 (approved), configurable in
+`analysis.detection_limits` of the settings file; every result will record its method.
+A zero-background case exposed a spurious fixed point y# = 0 in the ISO iteration; the
+iteration now starts at k²·ũ(1)², which is the exact answer there. Verified: Currie's
+2.71 + 4.65√B, equality of both methods for exact w, the closed form with uncertain w,
+non-existence for k·u_rel(w) ≥ 1, and Monte Carlo false-positive and detection rates
+(4 × 10⁵ trials). Conformity with ISO 11929 is not claimed.
+
+## TD-059 Regions of interest as a service; project schema 2 with a decision log (2026-11-12)
+`nsw.services.roi` (Qt-free): `Roi` (range, kind single/multiplet/custom, peaks with
+starting widths, stable id), validation, `propose_rois` (one ROI per overlap group of the
+search, 3 FWHM continuum margin, pairs closer than 1.5 estimated FWHM reported as
+possibly unresolved — owner-approved defaults), `net_area` (gross minus a straight
+continuum through the mean of the edge channels, with the continuum's own variance;
+exact for linear continua, Monte Carlo pull sd within 0.05 of 1), `limits` (either
+method of TD-058), `fit_roi`, and `record` / `current_rois`. The close-pair rule uses the
+search's width estimates, which are low for blended peaks (3.7 instead of 5 channels in
+the test); widths from the resolution model (R12) will replace them.
+Project files are now schema 2: an append-only `decision_event` table. Schema-1 files
+are copied to `<name>.before-schema-2.<time>.nswproj` and migrated in one transaction;
+the migration is tested on a file written exactly as schema 1 wrote it.
+
+## TD-060 Interactive plot (U2): modes, regions with undo, Regions panel (2026-11-12)
+`SpectrumPlot` uses a `SpectrumViewBox` that routes region drags, clicks and right-clicks
+to the plot; four modes (navigate, zoom box, region, select) with toolbar and keys
+(Esc, Z, R, S; Home, L, Del, F, Ctrl+Z/Y; shortcuts limited to the plot). The plot only
+emits signals; `RoiController` validates gestures through `services.roi`, applies them
+as `QUndoCommand`s (one `QUndoStack` per spectrum), keeps regions in `AppState`, and
+redraws refused edits back. `RoiPanel` lists regions with net counts and limits and
+offers the ISO 11929 / Currie choice (default from the settings file). Close pairs in
+region proposals now use the resolution model's widths when one is available
+(`fwhm_from_resolution`), resolving the low width estimates for blended peaks; models
+in keV are refused rather than converted without a verified calibration.
+Tests: 7 pytest-qt tests with synthesised mouse events (press/move/release on the plot
+viewport) and key clicks. Not yet done: regions saved to the project file from the
+interface (the service and schema exist), and a manual walk-through at 1366×768 and
+1920×1080.
+
+## TD-061 Fitting from a region and nested model comparison (U3) (2026-11-12)
+A region is fitted with its own peaks, else the candidates of the spectrum's last peak
+search inside it, else a search restricted to the region (scales from the spectrum's
+width estimate); analysts add peaks from the context menu (undoable; width from the
+region's other peaks or the estimate). Results join the spectrum's fits in `AppState`,
+so the Peak Fitting page and reports see them. *Compare models* fits constant ⊂ linear ⊂
+linear + step continua with the same estimator and range and keeps the simplest
+converged model unless the decrease of the fit statistic is significant (chi-square
+with the change of ndf, p < 0.01; halved for the step, whose fraction is bounded at 0).
+Tested: a flat continuum keeps "constant", a steep slope selects "linear". The tail
+model (R7) will join this comparison once implemented.
+
+## TD-062 Automatic peak search on opening; candidate quality classes (U4) (2026-11-12)
+Measured on a 16 384-channel spectrum with 60 peaks: width estimate 19 ms, search 8 ms
+(59 found), but the first search costs 1.7 s for importing `scipy.signal`. The search
+therefore runs automatically when a spectrum is opened (switchable), and `scipy.signal`
+is imported in a background thread right after the main window is shown (import only;
+start-up unchanged, the start-up test still passes). `services.candidates` classifies
+candidates: strong (S ≥ 10), weak, doubtful (within 1 σ of the threshold, or width
+ratio outside 0.5–1.6), not photopeak-like (width > 2.5 × expected). Expected width:
+the resolution model when given, else the median width of the strong candidates (said
+in the reasons). Not-photopeak-like and analyst-excluded candidates are left out of
+region fitting; exclusions are undoable and kept per spectrum in `AppState` (not yet
+saved to the project file).
+
+## TD-063 Nuclear Data Explorer page, gated overlay, peak matching (U5) (2026-11-12)
+Libraries loaded in the session now live in `AppState.libraries` (fictitious library
+always; files loaded from either page are shared). `services.nuclear_explorer` gives the
+nuclide, line, provenance and evaluation-difference tables, the overlay gate (the same
+rules as identification: verified calibration, experimental verification, fictitious
+library only for synthetic spectra and real libraries only for measurements), line
+positions by numerically inverting the verified calibration over the spectrum (refused
+if it does not increase with channel), and `match_peak`: lines within
+|ΔE| ≤ k·√(u_peak² + u_line² + u_cal²), k = 3, ranked by the fraction of the nuclide's
+other strong lines (≥ 50 % of its strongest, inside the spectrum) that have a fitted
+peak, then |ΔE|/σ. Accept/reject decisions are kept per spectrum in `AppState` (saving
+to the project's decision log comes with the provenance work). The page is inserted
+before Nuclide Identification: page indices 9 → Nuclear Data Explorer, 10 →
+Identification, 11 → Project File (constants and the self-test updated).
+
+## TD-064 Assisted energy calibration (U6) (2026-11-12)
+From an analyst-entered approximate linear calibration (gain, offset, relative
+uncertainty r), each fitted peak's compatible library lines are those with
+|E_approx − E_line| ≤ 3·√((r·E_approx)² + (g·u_ch)² + u_line²). Only a peak with exactly
+one compatible line is filled in automatically (labelled "suggested"); ambiguous peaks
+are listed. Vendor calibrations are never used as the guess (inventory §5). Before the
+fit NSW warns about duplicate assignments, too few points and coverage below 30 % of the
+channels; after it, about points with |normalised residual| > 3. Library kind rules as
+elsewhere. Measured spectra stay PROVISIONAL. Tested on the synthetic calibration source:
+every automatic suggestion is the true line; ambiguous peaks list it.
+
+## TD-065 Provenance: decisions saved, result digests, no source paths (2026-11-12)
+Implements the approved provenance design without a further schema change: every
+result saved through `services.project` gets a `provenance` block in its settings
+(algorithm version per result kind, NSW/Python/NumPy/SciPy versions, SHA-256 of the
+canonical JSON of the stored result, `store.canonical_digest`). Reopening a project
+recomputes every digest and reports mismatches next to the existing reproduction of
+fits and calibrations (a tampered fit is now caught by both checks). Saving a session
+also appends the analyst decisions not yet in the project: region creations, edits and
+deletions (against the replayed regions), the set of excluded candidates when it
+changes, and each accept/reject of a line assignment once; reopening restores them.
+Source files are stored with their file name only (the full path could contain the
+user's name; owner decision); the bit-for-bit round-trip test now expects this.
+A separate provenance table and per-analysis algorithm constants remain possible; the
+settings block was chosen because it needs no migration and is append-only already.
+
+## TD-066 Guided workflow panel and beginner / advanced modes (U7) (2026-11-12)
+`services.workflow` (Qt-free) derives the status of the twelve stages from a
+`WorkflowContext` the main window fills from `AppState` and the selected spectrum;
+blocked stages carry the same reasons as the gates (measured efficiency/activity need
+certified source data; identification needs a verified calibration). `WorkflowPanel`
+sits under the page list, refreshes on state changes, opens a stage's page on click and
+names the next ready stage. Modes only change visibility: widgets marked advanced
+(continuum channels, model comparison, sensitivity, covariance scaling, order test,
+assistance uncertainty) are hidden in Beginner mode, the default. The mode is not yet
+remembered between sessions.
+
+## TD-067 R7: limits from peak fits; optional HPGe tail model (2026-11-12)
+Limits from a fit use ũ(Ñ) from the expected Fisher information of the Poisson fit
+model at a hypothetical true area (continuum and other peak areas as nuisance; position
+and width fixed); Currie mode uses σ0 = ũ(0). Validated by Monte Carlo (both methods).
+The tail model lives in `analysis.tailfit` (L-BFGS-B on the Poisson deviance, bounded
+η, β; covariance from the expected information with a numerical Jacobian) so that the
+existing Gaussian fits and the validation digest are untouched; model choice by a
+parametric-bootstrap 99 % threshold. Status and open items: the "Implementation
+status" sections of the two design documents.
+
+## TD-068 Windows installer; layout for 1366 × 768 (2026-11-12)
+Per-user Inno Setup 6 installer (`packaging/windows/installer.iss`, fixed AppId for
+upgrades, `{autopf}` with lowest privileges, licence page, Start Menu entries incl.
+self-test, demo spectra and licences, optional desktop shortcut, launch after install;
+the uninstaller removes only installed files). The spec moved to
+`packaging/windows/NSW.spec` and bundles `build/licenses` from
+`scripts/collect_licenses.py` (licence files of the 22 runtime packages, verbatim
+LGPL-3.0 and GPL-3.0 texts taken from local installed packages, Python licence, Qt
+replacement notice; nothing downloaded). The installed application reads its settings
+from `%LOCALAPPDATA%\NSW\local.yaml`. `scripts/build_windows.ps1` builds from the lock,
+self-tests the built folder, compiles the installer and writes `SHA256SUMS.txt`;
+`scripts/smoke_test_installer.ps1` installs silently to a temporary folder, self-tests,
+reinstalls, uninstalls and checks that user data remain. Not signed.
+`scripts/ux_screenshots.py` showed a minimum window width of 1579 px; rows were split,
+pages put in scroll areas, the Regions tab made scrollable and the spectrum plot given a
+minimum height (docs/reports/UX_TEST_REPORT.md).

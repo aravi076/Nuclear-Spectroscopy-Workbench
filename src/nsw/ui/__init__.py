@@ -1,1 +1,1 @@
-"""NSW ui package (see docs/architecture.md)."""
+"""NSW ui package (see docs/design/architecture.md)."""

@@ -52,6 +52,18 @@ def create_application(argv: list[str] | None = None) -> QApplication:
     return app
 
 
+def _preload_in_background() -> None:
+    """Import scipy.signal (peak search, ~1.7 s) in a background thread after the window
+    is shown, so start-up stays fast and the first automatic search does not stall the
+    interface (TD-053, TD-062). Import only: no Qt object is touched from the thread."""
+    import threading
+
+    def load() -> None:
+        import scipy.signal  # noqa: F401
+
+    threading.Thread(target=load, name="nsw-preload", daemon=True).start()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="nsw")
     parser.add_argument(
@@ -78,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"warning: {exc}", file=sys.stderr)
     window = MainWindow(settings)
     window.show()
+    _preload_in_background()
     if args.load:
         if settings is not None:
             for root in settings.paths.experimental_roots:

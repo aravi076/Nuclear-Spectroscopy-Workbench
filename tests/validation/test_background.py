@@ -47,8 +47,8 @@ from nsw.simulation.generator import (
 )
 from tests.conftest import make_raw, make_source
 
-T_A = datetime(2026, 4, 23, 13, 28, 24)
-T_B = datetime(2026, 4, 24, 12, 8, 50)
+T_A = datetime(2026, 3, 9, 11, 2, 41)
+T_B = datetime(2026, 3, 10, 15, 47, 6)
 
 
 def gross(counts: Any = (100, 4, 0, 50), **kw: Any) -> Spectrum:

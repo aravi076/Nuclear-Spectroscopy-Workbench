@@ -7,3 +7,12 @@ paths:
   workspace: "D:/path/to/nsw-workspace"
   # SHA-256 manifest directory used for integrity checks of experimental roots.
   manifests: "local"
+
+# Optional. Decision thresholds and detection limits (both methods are always available
+# per analysis; this sets the default).
+analysis:
+  detection_limits:
+    method: iso11929   # iso11929 (ISO 11929 framework) or currie (Currie 1968)
+    alpha: 0.05        # false-positive probability
+    beta: 0.05         # false-negative probability at the detection limit
+    gamma: 0.05        # 1 - coverage probability of the coverage interval

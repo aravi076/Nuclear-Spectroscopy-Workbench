@@ -1,1 +1,1 @@
-"""NSW services package (see docs/architecture.md)."""
+"""NSW services package (see docs/design/architecture.md)."""

@@ -6,11 +6,13 @@ This module sits outside the scientific layers: ``nsw.core``, ``nsw.analysis``,
 
 from __future__ import annotations
 
+import os
+import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from nsw.core.errors import NSWError
 
@@ -34,10 +36,32 @@ class PathSettings(BaseModel):
         return v
 
 
+class DetectionLimitSettings(BaseModel):
+    """Default method and probabilities for decision thresholds and detection limits.
+
+    ``iso11929``: Bayesian framework of the ISO 11929 series (conformity not verified);
+    ``currie``: classical Currie (1968) limits. See ``nsw.analysis.limits``.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    method: Literal["iso11929", "currie"] = "iso11929"
+    alpha: float = Field(default=0.05, gt=0.0, lt=0.5)
+    beta: float = Field(default=0.05, gt=0.0, lt=0.5)
+    gamma: float = Field(default=0.05, gt=0.0, lt=0.5)
+
+
+class AnalysisSettings(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    detection_limits: DetectionLimitSettings = DetectionLimitSettings()
+
+
 class Settings(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     paths: PathSettings
+    analysis: AnalysisSettings = AnalysisSettings()
 
     def is_inside_experimental_root(self, path: Path) -> bool:
         """True if ``path`` lies inside a read-only experimental dataset directory."""
@@ -55,7 +79,16 @@ def project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def user_data_dir() -> Path:
+    """Per-user folder of the installed application (settings); never removed by the
+    uninstaller. A source checkout uses config/local.yaml in the project instead."""
+    base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+    return Path(base) / "NSW"
+
+
 def default_settings_path() -> Path:
+    if getattr(sys, "frozen", False):  # installed / packaged application
+        return user_data_dir() / "local.yaml"
     return project_root() / "config" / "local.yaml"
 
 

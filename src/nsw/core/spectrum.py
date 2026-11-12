@@ -244,9 +244,11 @@ class Spectrum:
     def _compute_hash(self) -> str:
         h = hashlib.sha256()
         h.update(self.counts.dtype.str.encode())
-        h.update(np.ascontiguousarray(self.counts).astype(self.counts.dtype.newbyteorder("<")))
+        h.update(
+            np.ascontiguousarray(self.counts).astype(self.counts.dtype.newbyteorder("<")).tobytes()
+        )
         if self.variance is not None:
-            h.update(np.ascontiguousarray(self.variance).astype("<f8"))
+            h.update(np.ascontiguousarray(self.variance).astype("<f8").tobytes())
         return h.hexdigest()
 
     def verify_integrity(self) -> bool:
@@ -279,7 +281,7 @@ class Spectrum:
         """Per-channel variance: observed counts for count data, stored variance otherwise.
 
         For count data this is the usual plug-in estimate var = N, which is zero for
-        empty channels; see docs/scientific_methodology.md for its limitations.
+        empty channels; see docs/science/scientific_methodology.md for its limitations.
         """
         if self.variance is not None:
             return self.variance

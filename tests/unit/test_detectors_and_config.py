@@ -131,3 +131,33 @@ def test_bad_settings_give_configuration_error(tmp_path: Path, text: str) -> Non
 def test_missing_settings_file(tmp_path: Path) -> None:
     with pytest.raises(ConfigurationError, match="not found"):
         load_settings(tmp_path / "nope.yaml")
+
+
+def test_detection_limit_defaults_and_choice(tmp_path: Path) -> None:
+    cfg = tmp_path / "local.yaml"
+    cfg.write_text('paths:\n  workspace: "w"\n', encoding="utf-8")
+    assert load_settings(cfg).analysis.detection_limits.method == "iso11929"
+    cfg.write_text(
+        'paths:\n  workspace: "w"\nanalysis:\n  detection_limits:\n    method: currie\n'
+        "    alpha: 0.01\n",
+        encoding="utf-8",
+    )
+    limits = load_settings(cfg).analysis.detection_limits
+    assert (limits.method, limits.alpha, limits.beta) == ("currie", 0.01, 0.05)
+
+
+def test_example_settings_file_is_valid() -> None:
+    from nsw.config import project_root
+
+    s = load_settings(project_root() / "config" / "nsw.example.yaml")
+    assert s.analysis.detection_limits.method == "iso11929"
+
+
+@pytest.mark.parametrize("bad", ["method: bayes", "alpha: 0.7", "beta: 0"])
+def test_bad_detection_limit_settings(tmp_path: Path, bad: str) -> None:
+    cfg = tmp_path / "local.yaml"
+    cfg.write_text(
+        f'paths:\n  workspace: "w"\nanalysis:\n  detection_limits:\n    {bad}\n', encoding="utf-8"
+    )
+    with pytest.raises(ConfigurationError):
+        load_settings(cfg)
