@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nsw"
-version = "0.9.0.dev0"
+version = "0.9.0b1"
 description = "Nuclear Spectroscopy Workbench: gamma-ray spectroscopy analysis for HPGe and NaI(Tl) detectors"
 readme = "README.md"
 license = "MIT"
