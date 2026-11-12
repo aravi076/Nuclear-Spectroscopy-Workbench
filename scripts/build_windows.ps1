@@ -2,7 +2,8 @@
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
 #
-# Steps: uv sync --locked, tests are NOT run here (run them before), collect licences,
+# Steps: uv sync --locked, tests are NOT run here (run them before), generate the
+# synthetic demo spectra, collect licences,
 # PyInstaller one-folder build, self-test of the built folder, Inno Setup installer,
 # SHA-256 checksums. Output: build\dist\NSW, build\installer\NSW-Setup-<version>-x64.exe,
 # build\installer\SHA256SUMS.txt.
@@ -16,6 +17,9 @@ if ($LASTEXITCODE -ne 0) { throw "uv sync failed" }
 $version = & $py -c "import nsw; print(nsw.__version__)"
 Write-Host "NSW version $version"
 
+# demo spectra for the installer: generated (git-ignored), always fresh and synthetic
+& $py scripts\generate_synthetic.py
+if ($LASTEXITCODE -ne 0) { throw "generating the synthetic demo spectra failed" }
 & $py scripts\collect_licenses.py build\licenses
 if ($LASTEXITCODE -ne 0) { throw "licence collection failed" }
 & $py -m PyInstaller packaging\windows\NSW.spec --noconfirm --distpath build\dist --workpath build\work

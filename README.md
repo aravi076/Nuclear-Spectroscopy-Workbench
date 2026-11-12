@@ -3,7 +3,7 @@
 NSW is a Windows desktop application and Python library for analysing gamma-ray
 spectra from HPGe and NaI(Tl) detectors.
 
-**Status: beta candidate (`0.9.0.dev0`; last release `v0.1.0-alpha`).**
+**Status: beta (`v0.9.0-beta`, version `0.9.0b1`).**
 The calculation engines are tested against synthetic spectra with known ground truth. Nothing in this repository is an
 experimentally validated measurement result; see
 [Scientific limitations](#scientific-limitations).

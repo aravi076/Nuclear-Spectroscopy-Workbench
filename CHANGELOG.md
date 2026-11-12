@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0b1 (`v0.9.0-beta`) — 2026-11-12
 
 ### Added (beta candidate, 2026-11-12)
 
