@@ -158,7 +158,7 @@ def fit_tailed(
         jac[:, i] = (_model(p + dp, x, k) - _model(p - dp, x, k)) / (2.0 * h)
     info = jac.T @ (jac / np.maximum(m, 1e-12)[:, None])
     try:
-        cov = np.linalg.inv(info)
+        cov = np.asarray(np.linalg.inv(info), dtype=np.float64)
     except np.linalg.LinAlgError:
         cov = np.full((p.size, p.size), np.nan)
     unc = np.sqrt(np.clip(np.diag(cov), 0.0, None))
