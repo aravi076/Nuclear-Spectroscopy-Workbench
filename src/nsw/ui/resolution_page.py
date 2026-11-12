@@ -251,7 +251,8 @@ class ResolutionPage(QWidget):
     # ------------------------------------------------------------------ selection
     def set_used(self, row: int, used: bool) -> None:
         item = self.peak_table.item(row, 0)
-        assert item is not None
+        if item is None:
+            raise IndexError(f"no peak-table row {row}")
         item.setCheckState(Qt.CheckState.Checked if used else Qt.CheckState.Unchecked)
 
     def used_rows(self) -> list[res_service.PeakRow]:

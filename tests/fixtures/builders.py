@@ -10,8 +10,8 @@ from collections.abc import Sequence
 from datetime import datetime
 
 NS = "http://www.canberra.com/mcaanywhair"
-DEFAULT_START = "Mon Apr 27 14:49:03 GMT+0530 2026"
-DEFAULT_START_MS = 1777281543892  # the same instant, with milliseconds
+DEFAULT_START = "Tue Mar 10 09:15:27 GMT+0530 2026"
+DEFAULT_START_MS = 1773114327892  # the same instant, with milliseconds
 
 
 def lynx_csv(
@@ -86,7 +86,7 @@ def _pdp11(value: float) -> bytes:
 def canberra_cnf(
     counts: Sequence[int],
     *,
-    start: datetime = datetime(2026, 4, 27, 14, 49, 3),
+    start: datetime = datetime(2026, 3, 10, 9, 15, 27),
     live: float = 100.0,
     real: float = 102.0,
     cal: tuple[float, float, float] = (-1.5, 0.25, 0.0),

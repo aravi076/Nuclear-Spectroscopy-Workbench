@@ -50,7 +50,7 @@ def window(app: QApplication, tmp_path: Path) -> Iterator[MainWindow]:
     root = tmp_path / "experimental"
     root.mkdir()
     (root / "run.csv").write_bytes(
-        b.lynx_csv(counts(), start="Mon Apr 27 10:00:00 GMT+0530 2026", live=1000, real=1001.5)
+        b.lynx_csv(counts(), start="Tue Mar 10 10:00:00 GMT+0530 2026", live=1000, real=1001.5)
     )
     syn = tmp_path / "synthetic"
     specs = {s.synthetic_id: s for s in presets.hpge_scenarios()}

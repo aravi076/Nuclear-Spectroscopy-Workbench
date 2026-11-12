@@ -43,6 +43,22 @@ def _collect() -> None:
     gc.collect()
 
 
+MIN_GUI_PYTHON = (3, 12)
+GUI_PYTHON_MESSAGE = (
+    "The NSW desktop interface needs Python 3.12 or later. On Python 3.11 a C extension "
+    "of the interface stack (PySide6 6.12) releases Python's None object too often, "
+    "which aborts the interpreter after a while ('none_dealloc'); Python 3.12 is immune "
+    "(None is immortal there). The calculation engine (nsw.analysis, nsw.services) "
+    "works on 3.11. The Windows installer bundles Python 3.12."
+)
+
+
+def check_gui_python(version: tuple[int, ...] = tuple(sys.version_info[:2])) -> None:
+    """Refuse to start the interface on an interpreter where it would crash later."""
+    if version < MIN_GUI_PYTHON:
+        raise SystemExit(GUI_PYTHON_MESSAGE)
+
+
 def create_application(argv: list[str] | None = None) -> QApplication:
     app = QApplication.instance()
     if not isinstance(app, QApplication):
@@ -50,6 +66,18 @@ def create_application(argv: list[str] | None = None) -> QApplication:
     app.setApplicationName("Nuclear Spectroscopy Workbench")
     _collect_on_gui_thread(app)
     return app
+
+
+def _preload_in_background() -> None:
+    """Import scipy.signal (peak search, ~1.7 s) in a background thread after the window
+    is shown, so start-up stays fast and the first automatic search does not stall the
+    interface (TD-053, TD-062). Import only: no Qt object is touched from the thread."""
+    import threading
+
+    def load() -> None:
+        import scipy.signal  # noqa: F401
+
+    threading.Thread(target=load, name="nsw-preload", daemon=True).start()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -65,6 +93,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    check_gui_python()
     app = create_application()
     if args.self_test is not None:
         from nsw.ui import selftest
@@ -78,6 +107,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"warning: {exc}", file=sys.stderr)
     window = MainWindow(settings)
     window.show()
+    _preload_in_background()
     if args.load:
         if settings is not None:
             for root in settings.paths.experimental_roots:

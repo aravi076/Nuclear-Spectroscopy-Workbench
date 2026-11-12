@@ -1,8 +1,8 @@
 """Adapter for the Canberra/Mirion Lynx CSV spectrum export.
 
-Layout (docs/file_formats.md), verified on 126 real files:
+Layout (docs/user/file_formats.md), verified on 126 real files:
 
-    Start Time, Mon Apr 27 14:49:03 GMT+0530 2026
+    Start Time, Tue Mar 10 09:15:27 GMT+0530 2026
     Energy calibration,  Offset: <a>, Slope: <b>, Quadratic: <c>
     Live Time (s), <float>
     Real Time (s), <float>

@@ -5,7 +5,7 @@ and the evidence for and against each. It is refused for spectra without a verif
 energy calibration and for every experimental spectrum while experimental verification
 is disabled; the reason is shown. NSW contains no nuclear data: synthetic spectra are
 compared with the fictitious test library, and a reference-data file with provenance
-can be loaded (``docs/nuclear_data.md``). Logic is in ``nsw.services.identification``.
+can be loaded (``docs/science/nuclear_data.md``). Logic is in ``nsw.services.identification``.
 """
 
 from __future__ import annotations

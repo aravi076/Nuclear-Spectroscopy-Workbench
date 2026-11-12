@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -31,7 +32,7 @@ def test_create_open_and_refuse_foreign_or_existing_files(tmp_path: Path) -> Non
     store = new_store(tmp_path)
     assert store.path.suffix == ".nswproj"
     info = store.info
-    assert info["name"] == "Demo project" and info["schema_version"] == 1
+    assert info["name"] == "Demo project" and info["schema_version"] == 2
     store.close()
     with pytest.raises(ProjectStoreError, match="already exists"):
         ps.create_project(tmp_path / "demo.nswproj", "again")
@@ -73,7 +74,7 @@ def test_newer_schema_is_refused_unchanged(tmp_path: Path) -> None:
 
 def test_spectra_round_trip_bit_for_bit(tmp_path: Path) -> None:
     spectrum, _ = spectrum_and_fits(sources.SYN_X)
-    measured = make_raw(np.arange(200) % 17, start_time=datetime(2026, 4, 27, 10, 0, 0))
+    measured = make_raw(np.arange(200) % 17, start_time=datetime(2026, 3, 10, 10, 0, 0))
     with new_store(tmp_path) as store:
         assert ps.save_spectrum(store, spectrum) is True
         assert ps.save_spectrum(store, spectrum) is False  # not stored twice
@@ -84,7 +85,13 @@ def test_spectra_round_trip_bit_for_bit(tmp_path: Path) -> None:
             assert np.array_equal(back.counts, original.counts)
             assert back.origin is original.origin and back.kind is original.kind
             assert back.start_time == original.start_time
-            assert back.source == original.source
+            # full paths are not stored, only the file name (owner decision, privacy)
+            expected_source = (
+                dataclasses.replace(original.source, path=original.source.filename)
+                if original.source is not None
+                else None
+            )
+            assert back.source == expected_source
             assert back.energy_calibration == original.energy_calibration
             assert back.provenance == original.provenance
         assert next(n for _, n, _, _ in store.spectrum_names()).startswith("ident-")
@@ -203,8 +210,69 @@ def test_a_fit_that_does_not_reproduce_is_reported(tmp_path: Path) -> None:
         )
         store._db.commit()
         contents = ps.load_project(store)
-    assert contents.fits == {} and "not reproduced" in contents.problems[0]
+    assert contents.fits == {}
+    text = " ".join(contents.problems)
+    # both independent checks catch it: the recomputed fit and the stored digest
+    assert "not reproduced" in text and "does not match its digest" in text
     with pytest.raises(ValueError, match="different spectrum"):
         other, _ = spectrum_and_fits(sources.SYN_X, seed=9)
         with new_store(tmp_path, "second") as store:
             ps.save_fits(store, other, fits)
+
+
+# ---- schema 2: analyst decisions ------------------------------------------------------
+def _v1_project(path: Path) -> None:
+    """A project file exactly as schema 1 wrote it (no decision table)."""
+    from nsw.database import store as st
+
+    db = sqlite3.connect(path)
+    db.execute(f"PRAGMA application_id = {st.APPLICATION_ID}")
+    db.executescript(st._SCHEMA + st._append_only_triggers(st.RESULT_TABLES))
+    with db:
+        db.execute("INSERT INTO schema_version VALUES (1, '2026-11-11T00:00:00+00:00')")
+        db.execute("INSERT INTO project VALUES (1, 'old', '2026-11-11', '0.9.0.dev0', '')")
+    db.close()
+
+
+def test_decisions_are_appended_filtered_and_immutable(tmp_path: Path) -> None:
+    store = new_store(tmp_path)
+    s = make_raw()
+    store.add_spectrum(s, "s.csv")
+    first = store.add_decision(
+        "roi:a1", "roi_create", data_sha256=s.data_sha256, value={"first": 2, "last": 6}
+    )
+    store.add_decision("roi:a1", "roi_edit", data_sha256=s.data_sha256, value={"last": 7})
+    store.add_decision("candidate:4.0", "candidate_exclude", data_sha256=s.data_sha256)
+    rois = store.decisions(s.data_sha256, subject_prefix="roi:")
+    assert [d.action for d in rois] == ["roi_create", "roi_edit"]
+    assert rois[0].id == first and rois[1].value == {"last": 7}
+    assert len(store.decisions()) == 3
+    with pytest.raises(sqlite3.DatabaseError, match="append-only"):
+        store._db.execute("DELETE FROM decision_event")
+    with pytest.raises(ProjectStoreError):
+        store.add_decision("roi:x", "roi_create", data_sha256="0" * 64)
+    with pytest.raises(ProjectStoreError):
+        store.add_decision(" ", "roi_create", data_sha256=None)
+    store.close()
+
+
+def test_schema_1_file_is_backed_up_and_migrated(tmp_path: Path) -> None:
+    path = tmp_path / "old.nswproj"
+    _v1_project(path)
+    store = ProjectStore.open(path)
+    assert store.info["schema_version"] == 2
+    store.add_decision("roi:b", "roi_create", data_sha256=None)
+    assert [d.subject for d in store.decisions()] == ["roi:b"]
+    assert any(a == "migrate" for _, a, _ in store.audit_log())
+    store.close()
+    backups = list(tmp_path.glob("old.before-schema-2.*.nswproj"))
+    assert len(backups) == 1
+    old = sqlite3.connect(backups[0])
+    assert old.execute("SELECT MAX(version) FROM schema_version").fetchone() == (1,)
+    assert old.execute(
+        "SELECT count(*) FROM sqlite_master WHERE name = 'decision_event'"
+    ).fetchone() == (0,)
+    old.close()
+    reopened = ProjectStore.open(path)  # already current: no second backup
+    reopened.close()
+    assert len(list(tmp_path.glob("old.before-schema-2.*.nswproj"))) == 1

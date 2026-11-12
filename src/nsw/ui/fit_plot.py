@@ -74,7 +74,7 @@ class FitPlot(QWidget):
         self.banner.setText(text)
         self.banner.setStyleSheet(
             f"QLabel#fitBanner {{ color: white; background: {colour}; font-weight: bold; "
-            "padding: 6px; }}"
+            "padding: 6px; }"
         )
 
     def clear(self) -> None:

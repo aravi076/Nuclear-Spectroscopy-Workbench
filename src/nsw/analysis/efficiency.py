@@ -59,9 +59,9 @@ from datetime import datetime
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.stats import chi2 as chi2_distribution
 
 from nsw.analysis import decay
+from nsw.analysis.distributions import chi2_sf
 from nsw.core.errors import ProcessingError
 
 POOR_FIT_P = 1e-3
@@ -337,7 +337,7 @@ def fit_efficiency_curve(
     residuals = y - x @ a
     chi2 = float(residuals @ v_inv @ residuals)
     ndf = n - (order + 1)
-    p_value = float(chi2_distribution.sf(chi2, ndf)) if ndf > 0 else math.nan
+    p_value = float(chi2_sf(chi2, ndf)) if ndf > 0 else math.nan
     absolute = kinds.pop()
     warnings = list(UNCORRECTED)
     if not absolute:

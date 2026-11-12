@@ -13,7 +13,6 @@ requires-python = ">=3.11"
 dependencies = [
     "numpy>=2.0",
     "scipy>=1.13",
-    "pandas>=2.2",
     "pydantic>=2.7",
     "PyYAML>=6.0",
 ]
@@ -32,7 +31,10 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.6",
     "mypy>=1.11",
-    "pandas-stubs",
+    "hypothesis>=6.100",  # property-based tests of the calculations (R4)
+    "pytest-qt>=4.4",  # real Qt event handling in GUI tests (R4)
+    "pytest-timeout>=2.3",  # a hanging test fails instead of hanging the run (R4)
+    "pip-audit>=2.7",  # known vulnerabilities in dependencies (R4)
     "types-PyYAML",
 ]
 package = ["pyinstaller>=6.10"]
@@ -46,6 +48,9 @@ packages = ["src/nsw"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+# a single test that runs longer than this is reported as failed (pytest-timeout)
+timeout = 900
+qt_api = "pyside6"
 markers = [
     "experimental: needs the local read-only laboratory dataset (skipped when not configured)",
     "gui: needs a Qt platform (offscreen is fine)",
@@ -58,13 +63,16 @@ target-version = "py311"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "NPY", "RUF"]
+select = ["E", "F", "W", "I", "B", "UP", "NPY", "RUF", "S"]
+
 # Scientific text legitimately uses Greek letters and typographic maths symbols.
 ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 # report text constants: one paragraph per line, wrapped when the PDF is drawn
 "src/nsw/services/report.py" = ["E501"]
+# pytest reports failures through assert; this is the test mechanism, not input validation
+"tests/**" = ["S101"]
 
 [tool.mypy]
 python_version = "3.11"

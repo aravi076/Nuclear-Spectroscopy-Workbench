@@ -31,7 +31,9 @@ from PySide6.QtWidgets import (
 )
 
 from nsw.core.spectrum import Spectrum
+from nsw.services import assisted_calibration as assisted
 from nsw.services import calibration as cal_service
+from nsw.services import nuclear_explorer as nx
 from nsw.ui.explorer import KeyValueTable
 from nsw.ui.fit_plot import link_x, show_all
 from nsw.ui.peak_search_page import describe_entry
@@ -147,6 +149,31 @@ class CalibrationPage(QWidget):
             "Use only when the scatter of the points is real (for example electronic "
             "non-linearity) and not a wrong line assignment. The choice is recorded."
         )
+        # assisted assignment from a reference library (U6)
+        self.assist_library = QComboBox()
+        self.assist_gain = QDoubleSpinBox()
+        self.assist_gain.setDecimals(6)
+        self.assist_gain.setRange(0.0, 1000.0)
+        self.assist_gain.setSuffix(" keV/ch")
+        self.assist_offset = QDoubleSpinBox()
+        self.assist_offset.setDecimals(3)
+        self.assist_offset.setRange(-10000.0, 10000.0)
+        self.assist_offset.setSuffix(" keV")
+        self.assist_unc = QDoubleSpinBox()
+        self.assist_unc.setRange(0.01, 40.0)
+        self.assist_unc.setValue(100 * assisted.DEFAULT_REL_UNC)
+        self.assist_unc.setSuffix(" %")
+        self.assist_unc.setToolTip("Relative uncertainty of the approximate calibration")
+        self.assist_button = QPushButton("Suggest assignments")
+        self.assist_button.setToolTip(
+            "Fill reference energies for peaks with exactly one compatible library line; "
+            "ambiguous peaks are listed for you to decide. Review before fitting."
+        )
+        self.assist_status = QLabel(
+            "Enter an approximate gain and offset (your first guess, not the vendor value) "
+            "to get suggested line assignments."
+        )
+        self.assist_status.setWordWrap(True)
         self.fit_button = QPushButton("Fit calibration")
         self.order_button = QPushButton("Test next higher order")
         self.export_button = QPushButton("Export calibration as CSV…")
@@ -211,6 +238,18 @@ class CalibrationPage(QWidget):
         left_layout = QVBoxLayout(left)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.addLayout(form)
+        assist_row = QHBoxLayout()
+        assist_row.addWidget(QLabel("Library:"))
+        assist_row.addWidget(self.assist_library, 1)
+        assist_row.addWidget(QLabel("approx. gain"))
+        assist_row.addWidget(self.assist_gain)
+        assist_row.addWidget(QLabel("offset"))
+        assist_row.addWidget(self.assist_offset)
+        assist_row.addWidget(QLabel("±"))
+        assist_row.addWidget(self.assist_unc)
+        assist_row.addWidget(self.assist_button)
+        left_layout.addLayout(assist_row)
+        left_layout.addWidget(self.assist_status)
         left_layout.addWidget(self.hint)
         left_layout.addWidget(self.peak_table, 1)
         left_layout.addLayout(buttons)
@@ -228,6 +267,9 @@ class CalibrationPage(QWidget):
         QVBoxLayout(self).addWidget(split)
 
         self.fit_button.clicked.connect(self.run)
+        self.assist_button.clicked.connect(self.suggest_assignments)
+        state.libraries_changed.connect(self._refresh_libraries)
+        self._refresh_libraries()
         self.order_button.clicked.connect(self.test_order)
         self.export_button.clicked.connect(self.export_requested)
         self.stability_button.clicked.connect(self.run_stability)
@@ -237,6 +279,43 @@ class CalibrationPage(QWidget):
         state.calibrations_changed.connect(self._show_history)
         self.refresh()
         self._show_history()
+
+    # ------------------------------------------------------------------ assistance
+    def _refresh_libraries(self) -> None:
+        current = self.assist_library.currentIndex()
+        self.assist_library.clear()
+        for library in self.state.libraries:
+            self.assist_library.addItem(nx.library_label(library))
+        self.assist_library.setCurrentIndex(max(0, current))
+
+    def suggest_assignments(self) -> None:
+        s = self.current_spectrum()
+        if s is None or not self._rows:
+            self.assist_status.setText("Fit peaks of this spectrum first.")
+            return
+        library = self.state.libraries[max(0, self.assist_library.currentIndex())]
+        missing = assisted.library_missing(s, library)
+        if missing:
+            self.assist_status.setText("Suggestions need " + "; ".join(missing) + ".")
+            return
+        try:
+            suggestions = assisted.suggest(
+                self._rows,
+                library,
+                self.assist_gain.value(),
+                self.assist_offset.value(),
+                self.assist_unc.value() / 100.0,
+            )
+        except cal_service.ProcessingError as exc:
+            self.assist_status.setText(f"No suggestions: {exc}")
+            return
+        for sug in suggestions:
+            line = sug.unique
+            if line is not None:
+                self.set_reference(
+                    sug.row_index, line.energy_kev, line.energy_unc_kev, line.source, "suggested"
+                )
+        self.assist_status.setText(assisted.suggestion_summary(suggestions))
 
     # ------------------------------------------------------------------ population
     def refresh(self) -> None:
@@ -325,7 +404,8 @@ class CalibrationPage(QWidget):
 
     def _cell(self, row: int, column: int) -> QTableWidgetItem:
         item = self.peak_table.item(row, column)
-        assert item is not None  # every cell is created in _fill_peak_table
+        if item is None:  # every cell is created in _fill_peak_table
+            raise IndexError(f"no peak-table cell at row {row}, column {column}")
         return item
 
     def row_near(self, channel: float) -> int:
@@ -366,6 +446,9 @@ class CalibrationPage(QWidget):
             points = self.points()
             if not points:
                 raise ValueError("no peak is ticked")
+            problems = assisted.assignment_problems(
+                points, s, self.order_box.currentData(), self.assist_gain.value() or None
+            )
             fit = cal_service.calibrate(
                 points, self.order_box.currentData(), self.inflate_check.isChecked()
             )
@@ -385,8 +468,10 @@ class CalibrationPage(QWidget):
         self.result_table.set_rows(cal_service.fit_rows(s, fit))
         self.point_table.set_table(*cal_service.point_table(fit))
         verified, _ = cal_service.verification(s, fit)
+        warnings = problems + assisted.outlier_messages(fit)
         self._set_status(
-            cal_service.status_text(s, fit),
+            cal_service.status_text(s, fit)
+            + ("\nCheck: " + "; ".join(warnings) if warnings else ""),
             "#0b5cad" if (s.is_synthetic and verified) else "#b00020",
         )
         self.state.add_calibration(

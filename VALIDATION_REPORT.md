@@ -224,7 +224,7 @@ true nuclide ranks first; one coincident line never exceeds "possible"; a missin
 strong line lowers class and score; a wider calibration uncertainty widens the window;
 decoys with two coincident lines are separated only with an efficiency curve; relative
 intensities give energy evidence only; conflicting and incomplete libraries are
-refused or reported. Corrections after the independent review: `docs/REVIEW_PHASE8_9.md`.
+refused or reported. Corrections after the independent review: `docs/reports/REVIEW_PHASE8_9.md`.
 
 ### Consolidated run (Phase 10)
 

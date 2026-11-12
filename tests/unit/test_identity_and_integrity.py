@@ -17,8 +17,8 @@ A = [(i * 7) % 50 for i in range(256)]
 A2 = [c * 2 for c in A]  # cumulative continuation of A
 A3 = [c * 3 + 1 for c in A]
 OTHER = [(i * 11) % 40 + 1 for i in range(256)]
-T0 = "Mon Apr 27 14:49:03 GMT+0530 2026"
-T1 = "Mon Apr 27 16:00:00 GMT+0530 2026"
+T0 = "Tue Mar 10 09:15:27 GMT+0530 2026"
+T1 = "Tue Mar 10 16:00:00 GMT+0530 2026"
 
 
 def put(folder: Path, name: str, data: bytes) -> Path:
@@ -70,7 +70,7 @@ def test_successive_saves_are_not_independent(tmp_path: Path) -> None:
 def test_cnf_start_time_matches_csv_within_tolerance(tmp_path: Path) -> None:
     # CNF carries sub-second local time without zone, CSV whole seconds with zone.
     files = [
-        put(tmp_path, "a.cnf", b.canberra_cnf(A, start=datetime(2026, 4, 27, 14, 49, 3, 800000))),
+        put(tmp_path, "a.cnf", b.canberra_cnf(A, start=datetime(2026, 3, 10, 9, 15, 27, 800000))),
         put(tmp_path, "b.csv", b.lynx_csv(A2, start=T0, live=200, real=203.5)),
     ]
     report = analyse_identity([read_spectrum(p) for p in files])
@@ -104,12 +104,12 @@ def test_files_are_not_paired_by_name(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("name", "live", "flagged"),
     [
-        ("54Mn-1500sec.csv", 1200.5, True),
-        ("54Mn-600sec.csv", 603.153, False),  # within 1 % + 1 s
-        ("1200s137Cs.csv", 1200.5, False),  # "137Cs" must not be read as a duration
-        ("30s 60Co.csv", 30.5, False),
-        ("152Eu+120 Sec.csv", 60.5, True),
-        ("background23april.csv", 1800.5, False),  # no duration in the name
+        ("sampleA-1500sec.csv", 1200.5, True),
+        ("sampleA-600sec.csv", 603.153, False),  # within 1 % + 1 s
+        ("700s137Cs.csv", 700.5, False),  # "137Cs" must not be read as a duration
+        ("45s 60Co.csv", 45.5, False),
+        ("sampleB+120 Sec.csv", 60.5, True),
+        ("backgroundfriday.csv", 1800.5, False),  # no duration in the name
     ],
 )
 def test_duration_in_filename_is_only_a_diagnostic(

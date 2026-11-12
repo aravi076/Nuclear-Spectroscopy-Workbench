@@ -36,13 +36,15 @@ from nsw.core.calibration import CalibrationStatus, EnergyCalibration
 from nsw.core.errors import ProcessingError
 from nsw.core.nuclear_data import ReferenceLibrary
 from nsw.core.spectrum import Spectrum, SpectrumKind
-from nsw.database.store import ProjectStore, ProjectStoreError, StoredRun
+from nsw.database.store import ProjectStore, ProjectStoreError, StoredRun, canonical_digest
 from nsw.io.identity import analyse_identity
 from nsw.io.reference_data import library_document
+from nsw.services import roi as roi_service
 from nsw.services.calibration import CalibrationHistoryItem
 from nsw.services.dataset import DatasetScan
 from nsw.services.export import ExportError, ensure_output_allowed
 from nsw.services.peaks import spectrum_name
+from nsw.services.roi import Roi
 
 __all__ = [
     "PROJECT_SUFFIX",
@@ -73,6 +75,74 @@ PROJECT_SUFFIX = ".nswproj"
 REPRODUCTION_RTOL = 1e-6  # relative agreement required when a stored fit is re-run
 RESTART_FRACTION = 1e-3  # without stored starting values: |difference| <= this x uncertainty
 Table = tuple[list[str], list[list[str]]]
+
+
+# Version of the algorithm behind each kind of stored result. Change it whenever a code
+# change can alter that result; reopened results with another version are compared with
+# a tolerance and reported (docs/design/SCIENTIFIC_PROVENANCE_DESIGN.md §3).
+ALGORITHM_VERSIONS = {
+    "peak-fit": "fitting/2",  # 2: starting values recorded for exact reproduction
+    "peak-search": "peaks/1",
+    "identification": "identification/1",
+    "resolution": "resolution/1",
+}
+
+
+def _provenance(kind: str, result: Mapping[str, Any]) -> dict[str, Any]:
+    import platform
+
+    import numpy
+    import scipy
+
+    return {
+        "algorithm": ALGORITHM_VERSIONS.get(kind, f"{kind}/1"),
+        "software": {
+            "nsw": nsw.__version__,
+            "python": platform.python_version(),
+            "numpy": numpy.__version__,
+            "scipy": scipy.__version__,
+        },
+        "result_sha256": canonical_digest(dict(result)),
+    }
+
+
+def _add_run(
+    store: ProjectStore,
+    kind: str,
+    *,
+    data_sha256: str | None,
+    synthetic: bool,
+    label: str,
+    settings: Mapping[str, Any],
+    result: Mapping[str, Any],
+    software: str,
+) -> int:
+    """``store.add_run`` with a provenance block (algorithm, versions, result digest)."""
+    with_prov = {**dict(settings), "provenance": _provenance(kind, result)}
+    return store.add_run(
+        kind,
+        data_sha256=data_sha256,
+        synthetic=synthetic,
+        label=label,
+        settings=with_prov,
+        result=result,
+        software=software,
+    )
+
+
+def verify_digests(runs: Iterable[StoredRun]) -> tuple[int, list[str]]:
+    """(number of results whose digest matches, problems). Runs saved before digests
+    existed are counted as not covered, not as failures."""
+    ok, problems = 0, []
+    for run in runs:
+        prov = run.settings.get("provenance")
+        if not isinstance(prov, Mapping) or "result_sha256" not in prov:
+            continue
+        if prov["result_sha256"] == canonical_digest(run.result):
+            ok += 1
+        else:
+            problems.append(f"{run.kind} {run.id}: stored result does not match its digest")
+    return ok, problems
 
 
 def _software() -> str:
@@ -191,7 +261,8 @@ def save_fits(
             "background_sha256": background.data_sha256 if joint and background else None,
         }
         ids.append(
-            store.add_run(
+            _add_run(
+                store,
                 "peak-fit",
                 data_sha256=spectrum.data_sha256,
                 synthetic=spectrum.is_synthetic,
@@ -207,7 +278,8 @@ def save_fits(
 def save_peak_search(store: ProjectStore, spectrum: Spectrum, result: PeakSearchResult) -> int:
     _ensure_spectrum(store, spectrum)
     s = result.settings
-    return store.add_run(
+    return _add_run(
+        store,
         "peak-search",
         data_sha256=spectrum.data_sha256,
         synthetic=spectrum.is_synthetic,
@@ -268,7 +340,8 @@ def save_identification(
 ) -> int:
     _ensure_spectrum(store, spectrum)
     s = result.settings
-    return store.add_run(
+    return _add_run(
+        store,
         "identification",
         data_sha256=spectrum.data_sha256,
         synthetic=spectrum.is_synthetic,
@@ -328,7 +401,8 @@ def save_record(
     if spectrum is not None:
         _ensure_spectrum(store, spectrum)
     is_synthetic = spectrum.is_synthetic if spectrum is not None else bool(synthetic)
-    return store.add_run(
+    return _add_run(
+        store,
         kind,
         data_sha256=spectrum.data_sha256 if spectrum is not None else None,
         synthetic=is_synthetic,
@@ -351,6 +425,10 @@ class ProjectContents:
     calibration_items: list[CalibrationHistoryItem] = field(default_factory=list)
     history: list[StoredRun] = field(default_factory=list)
     problems: list[str] = field(default_factory=list)  # reproducibility failures etc.
+    rois: dict[str, tuple[Roi, ...]] = field(default_factory=dict)
+    excluded: dict[str, frozenset[float]] = field(default_factory=dict)
+    assignments: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    digests_verified: int = 0
 
 
 def _close(a: float | None, b: float | None) -> bool:
@@ -459,6 +537,19 @@ def load_project(store: ProjectStore, *, reproduce_fits: bool = True) -> Project
             )
         )
     contents.history = store.runs()
+    contents.digests_verified, digest_problems = verify_digests(contents.history)
+    contents.problems.extend(digest_problems)
+    for sha in spectra:
+        rois = roi_service.current_rois(store, sha)
+        if rois:
+            contents.rois[sha] = rois
+        excluded = store.decisions(sha, subject_prefix=EXCLUDED_SUBJECT)
+        if excluded:
+            channels = excluded[-1].value.get("channels", [])
+            contents.excluded[sha] = frozenset(float(c) for c in channels)
+        decided = store.decisions(sha, subject_prefix="assignment:")
+        if decided:
+            contents.assignments[sha] = [dict(d.value) for d in decided]
     if reproduce_fits:
         originals = {sha: store.spectrum(sha) for sha in spectra}
         for run in store.runs("peak-fit"):
@@ -513,6 +604,9 @@ class SessionSpectrum:
     spectrum: Spectrum
     search: PeakSearchResult | None = None
     fits: tuple[FitResult, ...] = ()
+    rois: tuple[Roi, ...] = ()
+    excluded: frozenset[float] = frozenset()
+    assignments: tuple[Mapping[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -530,6 +624,7 @@ class SaveReport:
     calibrations: int
     backgrounds: int
     skipped: tuple[str, ...]
+    decisions: int = 0
 
     def text(self) -> str:
         parts = [
@@ -538,6 +633,7 @@ class SaveReport:
             f"{self.fits} fits",
             f"{self.calibrations} calibrations",
             f"{self.backgrounds} background designations",
+            f"{self.decisions} analyst decisions",
         ]
         text = "Saved " + ", ".join(parts) + " (results already in the project are not repeated)."
         if self.skipped:
@@ -561,7 +657,7 @@ def save_session(
     existing = {_fingerprint(r.kind, r.data_sha256, r.result) for r in store.runs()} | {
         _fingerprint("energy", c.data_sha256, c.record) for c in store.calibrations("energy")
     }
-    new_spectra = searches = n_fits = n_cal = n_bg = 0
+    new_spectra = searches = n_fits = n_cal = n_bg = n_decisions = 0
     skipped: list[str] = []
     for item in items:
         s = item.spectrum
@@ -583,6 +679,7 @@ def save_session(
                 continue
             save_fits(store, s, [fit])
             n_fits += 1
+        n_decisions += _save_decisions(store, item)
     for cal in calibrations:
         record = cal.record.model_dump(mode="json")
         sha = cal.spectrum.data_sha256 if cal.spectrum is not None else None
@@ -616,7 +713,61 @@ def save_session(
         store.set_background(bg.data_sha256, True, note)
         n_bg += 1
     store.log("save-session", f"{new_spectra} spectra, {n_fits} fits, {n_cal} calibrations")
-    return SaveReport(new_spectra, searches, n_fits, n_cal, n_bg, tuple(skipped))
+    return SaveReport(new_spectra, searches, n_fits, n_cal, n_bg, tuple(skipped), n_decisions)
+
+
+EXCLUDED_SUBJECT = "candidates:excluded"
+
+
+def _save_decisions(store: ProjectStore, item: SessionSpectrum) -> int:
+    """Append the analyst decisions of one spectrum that the project does not hold yet:
+    region changes (against the replayed regions), the set of excluded candidates (when
+    it changed) and line-assignment decisions (each once)."""
+    if not (item.rois or item.excluded or item.assignments):
+        stored_rois = roi_service.current_rois(store, item.spectrum.data_sha256)
+        if not stored_rois and not store.decisions(item.spectrum.data_sha256, EXCLUDED_SUBJECT):
+            return 0
+    sha = item.spectrum.data_sha256
+    save_spectrum(store, item.spectrum)
+    n = 0
+    stored = {r.roi_id: r for r in roi_service.current_rois(store, sha)}
+    current = {r.roi_id: r for r in item.rois}
+    for rid, roi in current.items():
+        if rid not in stored:
+            roi_service.record(store, roi, "roi_create")
+            n += 1
+        elif stored[rid] != roi:
+            roi_service.record(store, roi, "roi_edit")
+            n += 1
+    for rid, roi in stored.items():
+        if rid not in current:
+            roi_service.record(store, roi, "roi_delete")
+            n += 1
+    previous = store.decisions(sha, subject_prefix=EXCLUDED_SUBJECT)
+    last = (
+        frozenset(float(c) for c in previous[-1].value.get("channels", []))
+        if previous
+        else frozenset()
+    )
+    if item.excluded != last:
+        store.add_decision(
+            EXCLUDED_SUBJECT,
+            "candidates_excluded",
+            data_sha256=sha,
+            value={"channels": sorted(item.excluded)},
+        )
+        n += 1
+    known = {canonical_digest(d.value) for d in store.decisions(sha, subject_prefix="assignment:")}
+    for decision in item.assignments:
+        value = dict(decision)
+        if canonical_digest(value) in known:
+            continue
+        subject = f"assignment:{value.get('nuclide', '?')}:{value.get('line_kev', '?')}"
+        action = "assignment_accept" if value.get("accepted") else "assignment_reject"
+        store.add_decision(subject, action, data_sha256=sha, value=value)
+        known.add(canonical_digest(value))
+        n += 1
+    return n
 
 
 def _search_result(result: PeakSearchResult) -> dict[str, Any]:

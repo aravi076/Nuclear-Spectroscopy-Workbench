@@ -2,7 +2,31 @@
 
 ## Unreleased
 
-### Fixed (independent review, 2026-11-11; `docs/REVIEW_PHASE8_9.md`)
+### Added (beta candidate, 2026-11-12)
+
+- Interactive analysis on the spectrum plot: navigate / zoom-box / region / select modes,
+  regions of interest drawn and edited with the mouse, undo/redo, context menu,
+  keyboard shortcuts; automatic peak search with candidate classes; region fitting with
+  residuals and nested continuum-model comparison.
+- Decision thresholds, detection limits and coverage intervals: ISO 11929 framework or
+  Currie, selectable; from counts or from the peak fit (Monte Carlo validated; ISO
+  conformity not claimed). Optional HPGe low-energy tail model with a bootstrap test.
+- Nuclear Data Explorer (provenance, evaluation differences, reference lines on
+  calibrated spectra, peak matching with accept/reject); assisted energy calibration.
+- Guided workflow panel; Beginner and Advanced modes.
+- Project files (schema 2): analyst decisions and regions saved and restored, result
+  digests verified, file names instead of full paths.
+- Windows installer (per user) with licence texts and synthetic demo spectra; build and
+  smoke-test scripts. Dependency lock (`uv.lock`), CI workflow, Dependabot, security
+  lint rules, property-based tests, public-copy scanner, link checker.
+- Documentation reorganised (`docs/README.md`); interactive code graph (`docs/graph/`).
+
+### Changed
+
+- Start-up about 2.5 times faster (lazy imports); pandas removed.
+- Test data no longer reuse file names or acquisition times of private measurements.
+
+### Fixed (independent review, 2026-11-11; `docs/reports/REVIEW_PHASE8_9.md`)
 
 - Nuclide candidates: a rejected candidate no longer downgrades a good one; lines
   outside the efficiency curve carry no weight; two peaks matched by lines of known

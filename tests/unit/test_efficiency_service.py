@@ -40,7 +40,7 @@ def lines_and_areas(source: sources.SyntheticSource, live: float) -> tuple[list,
 
 
 def test_experimental_spectra_are_refused_with_the_list_of_missing_inputs() -> None:
-    s = make_raw(np.full(100, 10), start_time=datetime(2026, 4, 27, 10, 0, 0))
+    s = make_raw(np.full(100, 10), start_time=datetime(2026, 3, 10, 10, 0, 0))
     missing = es.missing_inputs(s)
     assert not es.EXPERIMENTAL_QUANTIFICATION_ENABLED
     for needle in (

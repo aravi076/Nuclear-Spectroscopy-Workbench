@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QHeaderView,
     QMenu,
+    QScrollArea,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
@@ -21,6 +22,8 @@ from PySide6.QtWidgets import (
 from nsw.core.spectrum import MeasurementStatus, Spectrum
 from nsw.services import describe
 from nsw.ui.plot import MAX_OVERLAY, PlotItemSpec, SpectrumPlot
+from nsw.ui.roi_controller import RoiController
+from nsw.ui.roi_panel import RoiPanel
 from nsw.ui.state import AppState, Entry
 
 COLUMNS = ("Spectrum", "Sample", "Live (s)", "Total counts", "Status", "Start", "Files")
@@ -81,6 +84,8 @@ class ExplorerPage(QWidget):
         self.list_tabs.currentChanged.connect(self._on_selection)
 
         self.plot = SpectrumPlot()
+        self.roi_controller = RoiController(state, self.plot, self)
+        self.roi_panel = RoiPanel(self.roi_controller)
         self.measurement_table = KeyValueTable()
         self.detector_table = KeyValueTable()
         self.file_table = KeyValueTable()
@@ -90,6 +95,12 @@ class ExplorerPage(QWidget):
         self.info_tabs.addTab(self.detector_table, "Detector")
         self.info_tabs.addTab(self.file_table, "Original file")
         self.info_tabs.addTab(self.history_table, "Warnings and history")
+        # the regions panel scrolls inside its tab so the spectrum plot keeps its height
+        roi_scroll = QScrollArea()
+        roi_scroll.setWidgetResizable(True)
+        roi_scroll.setWidget(self.roi_panel)
+        self.info_tabs.addTab(roi_scroll, "Regions of interest")
+        self.plot.setMinimumHeight(300)
 
         right = QSplitter(Qt.Orientation.Vertical)
         right.addWidget(self.plot)
@@ -220,6 +231,10 @@ class ExplorerPage(QWidget):
     def _on_selection(self) -> None:
         entries = self.selected_entries()
         self.plot.set_spectra([PlotItemSpec(e.spectrum, e.title) for e in entries])
+        # regions belong to the first (or only) spectrum shown
+        self.roi_controller.set_spectrum(entries[0].spectrum if entries else None)
+        self.roi_panel.spectrum_opened()
+        self.roi_panel.refresh()
         if entries:
             first = entries[0]
             s = first.spectrum

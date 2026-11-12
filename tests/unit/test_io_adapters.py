@@ -30,15 +30,15 @@ def write(tmp_path: Path, name: str, data: bytes) -> Path:
 
 # ------------------------------------------------------------------ timestamps
 def test_timestamp_parsing_is_explicit_about_zone() -> None:
-    t = parse_lynx_timestamp("Mon Apr 27 14:49:03 GMT+0530 2026")
-    assert t.replace(tzinfo=None) == datetime(2026, 4, 27, 14, 49, 3)
+    t = parse_lynx_timestamp("Tue Mar 10 09:15:27 GMT+0530 2026")
+    assert t.replace(tzinfo=None) == datetime(2026, 3, 10, 9, 15, 27)
     assert t.utcoffset() == timedelta(hours=5, minutes=30)
     assert parse_lynx_timestamp("Sat Jan  3 01:02:03 GMT-0800 2026").utcoffset() == timedelta(
         hours=-8
     )
 
 
-@pytest.mark.parametrize("bad", ["", "2026-04-27 14:49:03", "Mon Foo 27 14:49:03 GMT+0530 2026"])
+@pytest.mark.parametrize("bad", ["", "2026-03-10 09:15:27", "Tue Foo 10 09:15:27 GMT+0530 2026"])
 def test_bad_timestamps(bad: str) -> None:
     with pytest.raises(ValueError):
         parse_lynx_timestamp(bad)
@@ -52,7 +52,7 @@ def test_csv_import_preserves_counts_and_metadata(tmp_path: Path) -> None:
     assert s.counts.dtype == np.int64
     assert (s.kind, s.origin) == (SpectrumKind.RAW, DataOrigin.EXPERIMENTAL)
     assert (s.live_time_s, s.real_time_s) == (100.0, 101.5)
-    assert s.start_time_local == datetime(2026, 4, 27, 14, 49, 3)
+    assert s.start_time_local == datetime(2026, 3, 10, 9, 15, 27)
     assert s.source is not None
     assert s.source.filename == "run 30sec.csv"  # original name preserved verbatim
     assert s.source.sha256 == sha256_bytes(data) and s.source.size_bytes == len(data)
@@ -131,7 +131,7 @@ def test_ava_import(tmp_path: Path) -> None:
     np.testing.assert_array_equal(s.counts, COUNTS)
     assert (s.live_time_s, s.real_time_s) == (100.0, 101.5)
     assert s.start_time is not None and s.start_time.utcoffset() == timedelta(hours=5, minutes=30)
-    assert s.start_time_local == datetime(2026, 4, 27, 14, 49, 3, 892000)  # ms precision kept
+    assert s.start_time_local == datetime(2026, 3, 10, 9, 15, 27, 892000)  # ms precision kept
     assert s.detector_id == "HPGe@Lynx-II-12345"
     assert (s.sample_name, s.sample_description) == ("sample-A", "a description")
     assert s.embedded_calibration is not None
@@ -153,7 +153,7 @@ def test_ava_warnings(tmp_path: Path) -> None:
     assert any("conversion gain" in w for w in s.warnings)
     s = read_spectrum(write(tmp_path, "y.ava", b.lynx_ava(COUNTS, start_ms=None, start=None)))
     assert s.start_time is None and "acquisition start time" in s.missing_metadata()
-    s = read_spectrum(write(tmp_path, "z.ava", b.lynx_ava(COUNTS, start_ms=1777281543892 + 5000)))
+    s = read_spectrum(write(tmp_path, "z.ava", b.lynx_ava(COUNTS, start_ms=1773114327892 + 5000)))
     assert any("disagree" in w for w in s.warnings)
     s = read_spectrum(write(tmp_path, "c.ava", b.lynx_ava(COUNTS, cal=(1.0,))))
     assert s.embedded_calibration is None and s.calibration_status is CalibrationStatus.NONE
@@ -185,13 +185,13 @@ CNF_COUNTS = [(i * 37) % 1000 for i in range(512)]
 
 
 def test_cnf_import(tmp_path: Path) -> None:
-    data = b.canberra_cnf(CNF_COUNTS, live=1200.0, real=1240.0, sample="133Ba-1200sec")
+    data = b.canberra_cnf(CNF_COUNTS, live=1200.0, real=1240.0, sample="SYN-CAL-1200sec")
     s = read_spectrum(write(tmp_path, "x.cnf", data))
     np.testing.assert_array_equal(s.counts, CNF_COUNTS)
     assert s.n_channels == 512
     assert (s.live_time_s, s.real_time_s) == (1200.0, 1240.0)
-    assert s.start_time == datetime(2026, 4, 27, 14, 49, 3) and s.start_time.tzinfo is None
-    assert s.sample_name == "133Ba-1200sec"
+    assert s.start_time == datetime(2026, 3, 10, 9, 15, 27) and s.start_time.tzinfo is None
+    assert s.sample_name == "SYN-CAL-1200sec"
     assert s.embedded_calibration is not None
     assert s.embedded_calibration.coefficients == pytest.approx((-1.5, 0.25, 0.0))
     assert s.calibration_status is CalibrationStatus.UNVERIFIED

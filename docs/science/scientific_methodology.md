@@ -402,7 +402,7 @@ generalised least squares. Classes: *not supported*, *possible*, *probable*,
 curve. The output is a list of candidates with evidence, never an identification, and
 the service refuses spectra without a verified energy calibration and every
 experimental spectrum while experimental verification is disabled. Nuclear data are
-not shipped (`docs/nuclear_data.md`). Known weaknesses: `docs/REVIEW_PHASE8_9.md`.
+not shipped (`docs/science/nuclear_data.md`). Known weaknesses: `docs/reports/REVIEW_PHASE8_9.md`.
 
 ## 13. Validation metrics (`nsw.services.validation_suite`)
 

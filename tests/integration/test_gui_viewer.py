@@ -33,8 +33,8 @@ pytestmark = pytest.mark.gui
 A = [(i * 7) % 50 for i in range(256)]
 A2 = [c * 2 for c in A]
 OTHER = [(i * 11) % 40 + 1 for i in range(256)]
-T0 = "Mon Apr 27 14:49:03 GMT+0530 2026"
-T1 = "Mon Apr 27 16:00:00 GMT+0530 2026"
+T0 = "Tue Mar 10 09:15:27 GMT+0530 2026"
+T1 = "Tue Mar 10 16:00:00 GMT+0530 2026"
 
 
 @pytest.fixture(scope="module")

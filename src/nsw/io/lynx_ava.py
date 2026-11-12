@@ -42,7 +42,7 @@ class LynxAvaAdapter:
         if b"<!DOCTYPE" in data or b"<!ENTITY" in data:
             raise MalformedFileError(path, "XML document type / entity declarations not allowed")
         try:
-            root = ET.fromstring(data)
+            root = ET.fromstring(data)  # noqa: S314 - DOCTYPE/ENTITY refused above; no expansion possible
         except ET.ParseError as exc:
             raise MalformedFileError(path, f"invalid XML: {exc}") from exc
         if root.tag != _NS + "mcadata":

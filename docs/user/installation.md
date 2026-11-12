@@ -1,5 +1,10 @@
 # Installation
 
+Python version: the desktop interface needs **Python 3.12 or later**. On 3.11 a C
+extension of the interface stack (PySide6 6.12) releases Python's `None` too often and
+the interpreter aborts after a while (`Fatal Python error: none_dealloc`); 3.12 is
+immune. The calculation engine also runs on 3.11. The Windows installer bundles 3.12.
+
 Development setup (Windows 11, PowerShell). Requires `uv` (https://docs.astral.sh/uv/).
 
 ```powershell
@@ -16,7 +21,7 @@ Estimated disk use: about 1 GB for `.venv` with all extras.
 
 ```powershell
 uv pip install --python .venv\Scripts\python.exe "pyinstaller>=6.10"
-.venv\Scripts\python.exe -m PyInstaller packaging\nsw.spec --noconfirm --distpath build\dist --workpath build\work
+.venv\Scripts\python.exe -m PyInstaller packaging\windows\NSW.spec --noconfirm --distpath build\dist --workpath build\work
 ```
 
 Output: `build\dist\NSW\NSW.exe` with its `_internal` folder (about 270 MB; copy the

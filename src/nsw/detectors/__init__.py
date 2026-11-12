@@ -1,1 +1,1 @@
-"""NSW detectors package (see docs/architecture.md)."""
+"""NSW detectors package (see docs/design/architecture.md)."""

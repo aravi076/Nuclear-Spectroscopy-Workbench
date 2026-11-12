@@ -188,10 +188,10 @@ def analyse_identity(spectra: list[Spectrum]) -> IdentityReport:
     clusters: list[list[tuple[str, list[Spectrum], Spectrum]]] = []
     for item in timed:
         start = item[2].start_time_local
-        assert start is not None
+        assert start is not None  # noqa: S101 - type narrowing: `timed` holds only timed items
         if clusters:
             prev = clusters[-1][-1][2].start_time_local
-            assert prev is not None
+            assert prev is not None  # noqa: S101 - type narrowing: clusters hold only timed items
             if (start - prev).total_seconds() <= START_TOLERANCE_S:
                 clusters[-1].append(item)
                 continue

@@ -4,16 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pyqtgraph.exporters
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QCloseEvent
 from PySide6.QtWidgets import (
     QFileDialog,
+    QFrame,
     QInputDialog,
     QListWidget,
     QMainWindow,
     QMessageBox,
     QProgressBar,
+    QScrollArea,
     QSplitter,
     QStackedWidget,
     QWidget,
@@ -31,22 +32,25 @@ from nsw.services.export import ExportError, ensure_output_allowed, export_spect
 from nsw.services.integrity import IntegrityReport, verify_dataset
 from nsw.services.peaks import export_peaks_csv
 from nsw.services.resolution import export_resolution_csv
+from nsw.services.workflow import WorkflowContext
 from nsw.ui import workers
 from nsw.ui.background_page import BackgroundPage
 from nsw.ui.calibration_page import CalibrationPage
 from nsw.ui.dashboard import DashboardPage
 from nsw.ui.explorer import ExplorerPage
 from nsw.ui.identification_page import IdentificationPage
+from nsw.ui.nuclear_data_page import NuclearDataPage
 from nsw.ui.peak_fit_page import PeakFitPage
 from nsw.ui.peak_search_page import PeakSearchPage
 from nsw.ui.project_page import ProjectPage
 from nsw.ui.quantification_page import ActivityPage, EfficiencyPage
 from nsw.ui.resolution_page import ResolutionPage
 from nsw.ui.state import AppState
+from nsw.ui.workflow_panel import BEGINNER, WorkflowPanel, apply_mode, mark_advanced
 
 PAGE_DASHBOARD, PAGE_EXPLORER, PAGE_BACKGROUND, PAGE_PEAK_SEARCH, PAGE_PEAK_FIT = 0, 1, 2, 3, 4
 PAGE_CALIBRATION, PAGE_RESOLUTION, PAGE_EFFICIENCY, PAGE_ACTIVITY = 5, 6, 7, 8
-PAGE_IDENTIFICATION, PAGE_PROJECT = 9, 10
+PAGE_NUCLEAR_DATA, PAGE_IDENTIFICATION, PAGE_PROJECT = 9, 10, 11
 
 
 class MainWindow(QMainWindow):
@@ -63,6 +67,8 @@ class MainWindow(QMainWindow):
         self.pages = QStackedWidget()
         self.dashboard = DashboardPage(self.state)
         self.explorer = ExplorerPage(self.state)
+        if settings is not None:
+            self.explorer.roi_panel.set_method(settings.analysis.detection_limits.method)
         self._add_page("Project Dashboard", self.dashboard)
         self._add_page("Spectrum Explorer", self.explorer)
         self.background_page = BackgroundPage(self.state)
@@ -79,6 +85,8 @@ class MainWindow(QMainWindow):
         self._add_page("Efficiency Calibration", self.efficiency_page)
         self.activity_page = ActivityPage(self.state)
         self._add_page("Activity Calculation", self.activity_page)
+        self.nuclear_data_page = NuclearDataPage(self.state)
+        self._add_page("Nuclear Data Explorer", self.nuclear_data_page)
         self.identification_page = IdentificationPage(self.state)
         self._add_page("Nuclide Identification", self.identification_page)
         self.project: project_service.ProjectStore | None = None
@@ -87,8 +95,14 @@ class MainWindow(QMainWindow):
         self.nav.currentRowChanged.connect(self.pages.setCurrentIndex)
         self.nav.setCurrentRow(PAGE_DASHBOARD)
 
+        self._integrity_ok = False
+        self.workflow = WorkflowPanel(self.workflow_context)
+        left = QSplitter(Qt.Orientation.Vertical)
+        left.addWidget(self.nav)
+        left.addWidget(self.workflow)
+        left.setStretchFactor(1, 1)
         split = QSplitter(Qt.Orientation.Horizontal)
-        split.addWidget(self.nav)
+        split.addWidget(left)
         split.addWidget(self.pages)
         split.setStretchFactor(1, 1)
         self.setCentralWidget(split)
@@ -104,11 +118,36 @@ class MainWindow(QMainWindow):
         self.dashboard.open_synthetic_requested.connect(self.choose_synthetic_folder)
         self.dashboard.verify_requested.connect(self.verify_integrity)
         self.explorer.selection_changed.connect(self._update_actions)
+        self.workflow.open_page.connect(self.open_page)
+        self.workflow.mode_changed.connect(self.set_mode)
+        self.explorer.selection_changed.connect(self.workflow.refresh)
+        for signal in (
+            self.state.changed,
+            self.state.peaks_changed,
+            self.state.fits_changed,
+            self.state.calibrations_changed,
+            self.state.efficiency_changed,
+            self.state.libraries_changed,
+        ):
+            signal.connect(self.workflow.refresh)
+        mark_advanced(
+            self.explorer.roi_panel.edge_box,
+            self.explorer.roi_panel.compare_button,
+            self.explorer.roi_panel.tail_button,
+            self.explorer.roi_panel.threshold_box,
+            self.explorer.roi_panel.threshold_label,
+            self.explorer.roi_panel.edge_label,
+            self.calibration_page.inflate_check,
+            self.calibration_page.order_button,
+            self.calibration_page.assist_unc,
+        )
+        self.set_mode(BEGINNER)
         self.background_page.export_requested.connect(self.export_net_dialog)
         self.peak_fit_page.export_requested.connect(self.export_peaks_dialog)
         self.calibration_page.export_requested.connect(self.export_calibration_dialog)
         self.resolution_page.export_requested.connect(self.export_resolution_dialog)
         self.identification_page.load_library_requested.connect(self.load_library_dialog)
+        self.nuclear_data_page.load_library_requested.connect(self.load_library_dialog)
         self.identification_page.export_requested.connect(self.export_identification_dialog)
         self.project_page.new_requested.connect(self.new_project_dialog)
         self.project_page.open_requested.connect(self.open_project_dialog)
@@ -119,7 +158,12 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ construction
     def _add_page(self, title: str, widget: QWidget) -> None:
         self.nav.addItem(title)
-        self.pages.addWidget(widget)
+        # a page larger than a small screen scrolls instead of widening the window
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(widget)
+        self.pages.addWidget(scroll)
 
     def add_page(self, title: str, widget: QWidget) -> int:
         """Extension point for later phases; returns the page index."""
@@ -160,6 +204,50 @@ class MainWindow(QMainWindow):
             file_menu.addAction(a)
         file_menu.addSeparator()
         file_menu.addAction(act_quit)
+
+    # ------------------------------------------------------------------ workflow and modes
+    def workflow_context(self) -> WorkflowContext:
+        s = self.explorer.current_spectrum() if hasattr(self, "explorer") else None
+        key = s.data_sha256 if s is not None else ""
+        cal_verified = bool(
+            s is not None and s.energy_calibration is not None and s.energy_calibration.is_verified
+        )
+        provisional = any(item.data_sha256 == key for item in self.state.calibration_history)
+        efficiency = self.state.efficiency is not None
+        resolution_page = getattr(self, "resolution_page", None)
+        return WorkflowContext(
+            spectra_loaded=bool(self.state.all_entries()),
+            spectrum_selected=s is not None,
+            synthetic=bool(s is not None and s.is_synthetic),
+            integrity_checked=self._integrity_ok if hasattr(self, "_integrity_ok") else False,
+            detector_known=bool(s is not None and s.detector_id),
+            background_designated=bool(self.state.background_entries()),
+            peak_search_done=bool(key and self.state.peak_search(key) is not None),
+            fits_done=bool(key and self.state.fits(key)),
+            calibration_verified=cal_verified,
+            calibration_provisional=provisional and not cal_verified,
+            resolution_done=bool(resolution_page is not None and resolution_page.fit is not None),
+            efficiency_done=efficiency,
+            activity_possible=bool(efficiency and s is not None and s.is_synthetic),
+            library_loaded=bool(self.state.libraries),
+            project_open=getattr(self, "project", None) is not None,
+        )
+
+    def open_page(self, title: str) -> None:
+        for i in range(self.nav.count()):
+            item = self.nav.item(i)
+            if item is not None and item.text() == title:
+                self.nav.setCurrentRow(i)
+                return
+
+    def set_mode(self, mode: str) -> None:
+        """Beginner: workflow panel shown, advanced controls hidden. Same analysis."""
+        self.mode = mode
+        if self.workflow.mode() != mode:
+            self.workflow.set_mode(mode)
+        self.workflow.setVisible(True)
+        apply_mode(self, mode)
+        self.workflow.refresh()
 
     def _update_actions(self) -> None:
         has = self.explorer.current_spectrum() is not None
@@ -293,6 +381,8 @@ class MainWindow(QMainWindow):
         self._run(worker, "Verifying SHA-256 manifest…")
 
     def _integrity_done(self, report: IntegrityReport) -> None:
+        self._integrity_ok = report.ok
+        self.workflow.refresh()
         if report.ok:
             self.dashboard.set_integrity_text(
                 f"Integrity: OK — all {report.scanned} files match the recorded SHA-256 manifest.",
@@ -327,6 +417,8 @@ class MainWindow(QMainWindow):
         except ExportError as exc:
             self._error("Export refused", str(exc))
             return None
+        import pyqtgraph.exporters  # imported on use: 1.4 s at start-up otherwise (R1)
+
         exporter = pyqtgraph.exporters.ImageExporter(self.explorer.plot.plot.getPlotItem())
         exporter.parameters()["width"] = 1600
         exporter.export(str(out))
@@ -430,7 +522,8 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ reports
     def report_spectrum(self) -> Spectrum | None:
         """The spectrum of the page in front, else the one selected in the explorer."""
-        page = self.pages.currentWidget()
+        holder = self.pages.currentWidget()
+        page = holder.widget() if isinstance(holder, QScrollArea) else holder
         current = getattr(page, "current_spectrum", None)
         spectrum = current() if callable(current) else None
         return spectrum if spectrum is not None else self.explorer.current_spectrum()
@@ -515,6 +608,7 @@ class MainWindow(QMainWindow):
             self._error("Reference data not loaded", str(exc))
             return False
         self.identification_page.add_library(library)
+        self.state.add_library(library)
         if self.project is not None:
             project_service.save_reference_library(self.project, library)
             self._show_project()
@@ -617,12 +711,22 @@ class MainWindow(QMainWindow):
                 self.state.store_fit(sha, fit)
         for item in contents.calibration_items:
             self.state.add_calibration(item)
+        for rois in contents.rois.values():
+            for roi in rois:
+                self.state.put_roi(roi)
+        for sha, channels in contents.excluded.items():
+            self.state.set_excluded_candidates(sha, channels)
+        for sha, decisions in contents.assignments.items():
+            for decision in decisions:
+                self.state.record_assignment(sha, decision)
         self._set_project(store)
         self.project_page.set_problems(problems)
         n_fits = sum(len(f) for f in contents.fits.values())
         self.project_page.set_status(
             f"Opened: {len(contents.spectra)} spectra, {n_fits} fits reproduced, "
-            f"{len(contents.calibration_items)} calibrations reproduced"
+            f"{len(contents.calibration_items)} calibrations reproduced, "
+            f"{contents.digests_verified} result digests verified, "
+            f"{sum(len(r) for r in contents.rois.values())} regions restored"
             + (f"; {len(problems)} problems (listed below)" if problems else "."),
             ok=not problems,
         )
@@ -636,8 +740,15 @@ class MainWindow(QMainWindow):
         for entry in self.state.all_entries():
             search = self.state.peak_search(entry.key)
             fits = tuple(self.state.fits(entry.key))
-            if search is not None or fits:
-                items.append(project_service.SessionSpectrum(entry.spectrum, search, fits))
+            rois = tuple(self.state.rois(entry.key))
+            excluded = self.state.excluded_candidates(entry.key)
+            assignments = tuple(self.state.assignments(entry.key))
+            if search is not None or fits or rois or excluded or assignments:
+                items.append(
+                    project_service.SessionSpectrum(
+                        entry.spectrum, search, fits, rois, excluded, assignments
+                    )
+                )
         calibrations = []
         for item in self.state.calibration_history:
             owner = self.state.entry(item.data_sha256) if item.data_sha256 else None

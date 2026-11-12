@@ -33,8 +33,8 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.stats import chi2 as chi2_distribution
 
+from nsw.analysis.distributions import chi2_sf
 from nsw.core.errors import ProcessingError
 from nsw.core.spectrum import (
     MeasurementStatus,
@@ -194,7 +194,7 @@ def subtract_background(gross: Spectrum, background: Spectrum) -> BackgroundSubt
     compat = check_compatibility(gross, background)
     if not compat.ok:
         raise ProcessingError("background subtraction refused: " + "; ".join(compat.errors))
-    assert gross.live_time_s is not None and background.live_time_s is not None
+    assert gross.live_time_s is not None and background.live_time_s is not None  # noqa: S101 - type narrowing: check_compatibility above requires both live times
     alpha = gross.live_time_s / background.live_time_s
     rel = math.hypot(
         _rounding_std(gross) / gross.live_time_s, _rounding_std(background) / background.live_time_s
@@ -271,7 +271,7 @@ class RateComparison:
 
 
 def _total_rate(s: Spectrum) -> Quantity:
-    assert s.live_time_s is not None
+    assert s.live_time_s is not None  # noqa: S101 - type narrowing: only called after check_compatibility
     n = float(s.counts.sum())
     t = s.live_time_s
     return Quantity(
@@ -311,7 +311,7 @@ def compare_count_rates(
     compat = check_compatibility(a, b, require_background_kind=False)
     if not compat.ok:
         raise ProcessingError("comparison refused: " + "; ".join(compat.errors))
-    assert a.live_time_s is not None and b.live_time_s is not None
+    assert a.live_time_s is not None and b.live_time_s is not None  # noqa: S101 - type narrowing: check_compatibility above requires both live times
     p = a.live_time_s / (a.live_time_s + b.live_time_s)
     ak = block_sums(a.counts, block_width).astype(np.float64)
     bk = block_sums(b.counts, block_width).astype(np.float64)
@@ -326,7 +326,7 @@ def compare_count_rates(
         rate_b=_total_rate(b),
         chi2=chi2,
         ndf=ndf,
-        p_value=float(chi2_distribution.sf(chi2, ndf)),
+        p_value=float(chi2_sf(chi2, ndf)),
         block_width=block_width,
         blocks_skipped=int((~use).sum()),
     )

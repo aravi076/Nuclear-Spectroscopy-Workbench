@@ -26,4 +26,4 @@ welcome; please open an issue before sending a larger change.
 
 A new calculation needs a test against an independent reference (hand calculation,
 analytical limit, or a second numerical method) and its formula in
-`docs/scientific_methodology.md`. Design choices go into `TECHNICAL_DECISIONS.md`.
+`docs/science/scientific_methodology.md`. Design choices go into `TECHNICAL_DECISIONS.md`.

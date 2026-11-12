@@ -1,1 +1,1 @@
-"""NSW database package (see docs/architecture.md)."""
+"""NSW database package (see docs/design/architecture.md)."""

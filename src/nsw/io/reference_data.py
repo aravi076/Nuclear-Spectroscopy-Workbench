@@ -8,7 +8,7 @@ provider.
 Implemented provider
 --------------------
 :class:`JsonFileProvider` reads the NSW reference-data file (JSON, format version 1,
-documented in docs/nuclear_data.md). It is the import mechanism for data the user has
+documented in docs/science/nuclear_data.md). It is the import mechanism for data the user has
 obtained, and the format of the fictitious test library. The file is kept as the raw
 source: its SHA-256 is stored in every record read from it.
 
@@ -17,7 +17,7 @@ Sources without a provider
 ``KNOWN_SOURCES`` lists the evaluations NSW is designed for (DDEP primary, ENSDF
 supplementary) with the state of their reuse terms. Neither has a parser yet: no real
 file of either has been inspected and their redistribution terms are not established
-(docs/nuclear_data.md). No values of either are contained in NSW.
+(docs/science/nuclear_data.md). No values of either are contained in NSW.
 """
 
 from __future__ import annotations
