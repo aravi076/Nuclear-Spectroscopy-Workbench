@@ -77,7 +77,7 @@ yet by a recorded manual walk-through ([docs/reports/UX_TEST_REPORT.md](docs/rep
 
 | Used | For |
 |---|---|
-| Python 3.12 (3.11 or later) | language |
+| Python 3.12 or later (calculation engine also 3.11) | language |
 | NumPy, SciPy | numerics, statistics |
 | Pydantic | validated records (calibrations, settings, nuclear-data model) |
 | PyYAML | settings file |
@@ -115,7 +115,8 @@ and the interface calls `services` only. Details:
 from the release page; see [docs/user/WINDOWS_INSTALLER.md](docs/user/WINDOWS_INSTALLER.md)
 (the installer is not code-signed).
 
-**From source (Windows, PowerShell)** requires Python 3.11 or later (developed and tested with 3.12) and
+**From source (Windows, PowerShell)** requires Python 3.12 or later for the desktop interface (the calculation engine
+also runs on 3.11; PySide6 6.12 aborts Python 3.11 with a `none_dealloc` error) and
 [uv](https://docs.astral.sh/uv/).
 
 ```powershell

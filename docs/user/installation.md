@@ -1,5 +1,10 @@
 # Installation
 
+Python version: the desktop interface needs **Python 3.12 or later**. On 3.11 a C
+extension of the interface stack (PySide6 6.12) releases Python's `None` too often and
+the interpreter aborts after a while (`Fatal Python error: none_dealloc`); 3.12 is
+immune. The calculation engine also runs on 3.11. The Windows installer bundles 3.12.
+
 Development setup (Windows 11, PowerShell). Requires `uv` (https://docs.astral.sh/uv/).
 
 ```powershell

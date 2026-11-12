@@ -529,7 +529,7 @@ class SpectrumPlot(QWidget):
         self.banner.setText("\n".join(lines))
         self.banner.setStyleSheet(
             f"QLabel#calibrationBanner {{ color: white; background: {colour}; "
-            "font-weight: bold; padding: 6px; }}"
+            "font-weight: bold; padding: 6px; }"
         )
 
     def _on_mouse_moved(self, event: tuple[object, ...]) -> None:

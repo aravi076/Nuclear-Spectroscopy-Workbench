@@ -43,6 +43,22 @@ def _collect() -> None:
     gc.collect()
 
 
+MIN_GUI_PYTHON = (3, 12)
+GUI_PYTHON_MESSAGE = (
+    "The NSW desktop interface needs Python 3.12 or later. On Python 3.11 a C extension "
+    "of the interface stack (PySide6 6.12) releases Python's None object too often, "
+    "which aborts the interpreter after a while ('none_dealloc'); Python 3.12 is immune "
+    "(None is immortal there). The calculation engine (nsw.analysis, nsw.services) "
+    "works on 3.11. The Windows installer bundles Python 3.12."
+)
+
+
+def check_gui_python(version: tuple[int, ...] = tuple(sys.version_info[:2])) -> None:
+    """Refuse to start the interface on an interpreter where it would crash later."""
+    if version < MIN_GUI_PYTHON:
+        raise SystemExit(GUI_PYTHON_MESSAGE)
+
+
 def create_application(argv: list[str] | None = None) -> QApplication:
     app = QApplication.instance()
     if not isinstance(app, QApplication):
@@ -77,6 +93,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    check_gui_python()
     app = create_application()
     if args.self_test is not None:
         from nsw.ui import selftest
