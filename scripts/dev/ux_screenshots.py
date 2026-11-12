@@ -1,6 +1,6 @@
 """Render the main pages at 1366×768 and 1920×1080 from synthetic spectra (U8 aid).
 
-    .venv\\Scripts\\python.exe scripts\\ux_screenshots.py OUTPUT_FOLDER
+    .venv\\Scripts\\python.exe scripts\\dev\\ux_screenshots.py OUTPUT_FOLDER
 
 Uses the real Windows display (a window appears briefly). For each size it records
 whether the window's minimum size fits the screen size and saves screenshots of the

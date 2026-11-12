@@ -2,8 +2,8 @@
 
 Standard library only. The dataset is opened strictly for reading.
 
-    python scripts/verify_dataset_integrity.py create <dataset_root> <manifest.csv>
-    python scripts/verify_dataset_integrity.py verify <dataset_root> <manifest.csv>
+    python scripts/data/verify_dataset_integrity.py create <dataset_root> <manifest.csv>
+    python scripts/data/verify_dataset_integrity.py verify <dataset_root> <manifest.csv>
 
 `verify` exits with status 1 if any file was added, removed or changed.
 """

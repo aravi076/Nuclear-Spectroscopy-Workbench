@@ -36,11 +36,11 @@ Setup 6 (`ISCC.exe`, per-user install is fine).
 
 ```powershell
 .venv\Scripts\python.exe -m pytest            # must pass first
-powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
-powershell -ExecutionPolicy Bypass -File scripts\smoke_test_installer.ps1 build\installer\NSW-Setup-<version>-x64.exe
+powershell -ExecutionPolicy Bypass -File scripts\release\build_windows.ps1
+powershell -ExecutionPolicy Bypass -File scripts\release\smoke_test_installer.ps1 build\installer\NSW-Setup-<version>-x64.exe
 ```
 
-`build_windows.ps1`: `uv sync --locked`; `scripts/collect_licenses.py` (licence files
+`build_windows.ps1`: `uv sync --locked`; `scripts/release/collect_licenses.py` (licence files
 of every distributed package, LGPL-3.0 and GPL-3.0 texts for Qt for Python, the Python
 licence, the Qt replacement notice); PyInstaller with `packaging/windows/NSW.spec`;
 self-test of the built folder; Inno Setup with `packaging/windows/installer.iss`;

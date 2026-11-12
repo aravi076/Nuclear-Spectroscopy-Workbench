@@ -1,6 +1,6 @@
 # PyInstaller specification for the NSW Windows build (one folder, windowed).
 #
-#   scripts\build_windows.ps1   (collects licences, builds, makes the installer)
+#   scripts\release\build_windows.ps1   (collects licences, builds, makes the installer)
 #   .venv\Scripts\python.exe -m PyInstaller packaging\windows\NSW.spec --noconfirm
 #
 # Output: dist\NSW\NSW.exe. Development tools (pytest, mypy, ruff) and unused Qt/
@@ -8,9 +8,9 @@
 from pathlib import Path
 
 ROOT = Path(SPECPATH).parents[1]
-LICENCES = ROOT / "build" / "licenses"  # written by scripts/collect_licenses.py
+LICENCES = ROOT / "build" / "licenses"  # written by scripts/release/collect_licenses.py
 if not LICENCES.is_dir():
-    raise SystemExit("run scripts/collect_licenses.py build/licenses first")
+    raise SystemExit("run scripts/release/collect_licenses.py build/licenses first")
 
 a = Analysis(
     [str(ROOT / "packaging" / "windows" / "nsw_launcher.py")],

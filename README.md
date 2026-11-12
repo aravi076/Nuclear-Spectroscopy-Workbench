@@ -55,8 +55,8 @@ NSW aims to make that chain explicit and checkable:
 | Synthetic spectrum generator with stored ground truth (HPGe-like and NaI-like) | yes | generated files can be opened |
 | Project file (SQLite, append-only history, fits reproduced on reopening, analyst decisions and regions saved, result digests verified, file names only) | yes | yes: Project File |
 | PDF analysis reports; SVG, PDF or PNG figures | yes | File menu |
-| Consolidated synthetic validation with pass criteria and repeatability | yes (`scripts/run_validation.py`) | — |
-| Windows installer (per user, no administrator rights) with licences and synthetic demo spectra; executable self-test | yes (`packaging/windows/`, `scripts/build_windows.ps1`) | — |
+| Consolidated synthetic validation with pass criteria and repeatability | yes (`scripts/validation/run_validation.py`) | — |
+| Windows installer (per user, no administrator rights) with licences and synthetic demo spectra; executable self-test | yes (`packaging/windows/`, `scripts/release/build_windows.ps1`) | — |
 
 A "calculation engine" is a tested module that can be called from Python. A "desktop
 page" is reachable in the application; the twelve pages are exercised by automated
@@ -134,7 +134,7 @@ Without `uv`: `py -3.12 -m venv .venv`, then
 Create example spectra and start the application:
 
 ```powershell
-.venv\Scripts\python.exe scripts\generate_synthetic.py
+.venv\Scripts\python.exe scripts\data\generate_synthetic.py
 .venv\Scripts\python.exe -m nsw.ui.app
 ```
 
@@ -203,7 +203,7 @@ Run of 2026-11-12 in this repository (Windows 11, CPython 3.12, environment from
   finite differences and independent numerical solutions.
 - **Synthetic validation:** bias, coverage of stated uncertainties, false-detection rate
   and detection probability from Monte Carlo ensembles of generated spectra;
-  `scripts/validate_peak_fitting.py` reproduces the tables.
+  `scripts/validation/validate_peak_fitting.py` reproduces the tables.
 - **Experimental validation: none.** During development the software was also run on
   private laboratory HPGe measurements as a check of file handling. Those measurements
   and the tests that read them are not part of this repository, and no physical

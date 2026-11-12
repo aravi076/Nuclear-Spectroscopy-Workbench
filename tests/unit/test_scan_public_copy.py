@@ -1,4 +1,4 @@
-"""scripts/scan_public_copy.py finds planted private data, including in Git history.
+"""scripts/release/scan_public_copy.py finds planted private data, including in Git history.
 
 All "secrets" here are fake and assembled at run time, so this file itself does not
 match the patterns it tests.
@@ -15,7 +15,7 @@ from types import ModuleType
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "scan_public_copy.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "release" / "scan_public_copy.py"
 
 
 def _load() -> ModuleType:

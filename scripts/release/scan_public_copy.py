@@ -2,7 +2,7 @@
 
 Run before every push to the public repository (recommendation R5):
 
-    .venv\\Scripts\\python.exe scripts\\scan_public_copy.py <public folder>
+    .venv\\Scripts\\python.exe scripts\\release\\scan_public_copy.py <public folder>
 
 What is searched
     - every file in the working tree (text and binary, so screenshots and PDFs are
@@ -38,7 +38,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PATTERNS = ROOT / "local" / "public_scan_patterns.txt"
 DEFAULT_ALLOW = ROOT / "local" / "public_scan_allow.txt"
 SKIP_DIRS = {".git", ".venv", "venv", "__pycache__", ".mypy_cache", ".ruff_cache",

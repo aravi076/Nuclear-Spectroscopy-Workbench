@@ -9,7 +9,7 @@ classes, Nuclear Data Explorer, assisted calibration, workflow panel and modes).
 | Kind | Evidence | Result |
 |---|---|---|
 | Automated interface tests (pytest-qt, offscreen) with synthesised mouse events (press/move/release on the plot viewport), key clicks and widget actions | `tests/integration/test_gui_roi.py`, `test_gui_nuclear_data.py`, `test_gui_assisted_calibration.py`, `test_gui_provenance.py`, `test_gui_workflow.py` and the earlier GUI tests | all pass (see the test run in `README.md`) |
-| Rendering at **1366 × 768** and **1920 × 1080** on the real Windows display (`scripts/ux_screenshots.py`): window minimum size, screenshots of Spectrum Explorer (Beginner and Advanced), Nuclear Data Explorer with reference lines, Energy Calibration | screenshots in the build folder (not committed: they are regenerated on demand) | fits both sizes after the fixes below |
+| Rendering at **1366 × 768** and **1920 × 1080** on the real Windows display (`scripts/dev/ux_screenshots.py`): window minimum size, screenshots of Spectrum Explorer (Beginner and Advanced), Nuclear Data Explorer with reference lines, Energy Calibration | screenshots in the build folder (not committed: they are regenerated on demand) | fits both sizes after the fixes below |
 | **Manual walk-through by a person with real mouse and keyboard** | — | **not yet done** (owner action, §4) |
 
 Programmatic tests and rendered screenshots are *not* a validation of the interface by
