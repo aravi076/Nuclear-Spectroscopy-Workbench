@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed (first hands-on test with a measured spectrum)
+
+- Peak search: no candidates at the lower-level discriminator edge of measured spectra.
+- Reports: fixed peak positions and widths read "fixed" instead of "± 0.000"; a peak
+  fitted again in an overlapping region is listed once (the latest fit); the file's
+  folder is no longer printed (name and SHA-256 identify it); long labels are no longer
+  cut off; instrument settings stored as 32-bit numbers are shown at their precision.
+
 ## 0.9.0b1 (`v0.9.0-beta`) — 2026-11-12
 
 ### Added (beta candidate, 2026-11-12)

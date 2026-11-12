@@ -253,11 +253,17 @@ def peak_table(results: Iterable[FitResult]) -> Table:
     rows: list[list[str]] = []
     for r in results:
         for p in sorted(r.peaks, key=lambda q: q.centroid):
+            centroid = _pm(p.centroid, p.centroid_unc, ".3f")
+            if r.settings.fixed_centroids:  # held at a supplied value: no uncertainty from this fit
+                centroid = (centroid[0], "fixed")
+            fwhm = _pm(p.fwhm, p.fwhm_unc, ".3f")
+            if r.settings.fixed_width:
+                fwhm = (fwhm[0], "fixed")
             row = [
                 f"{r.first_channel}–{r.last_channel}",
-                *_pm(p.centroid, p.centroid_unc, ".3f"),
+                *centroid,
                 *_pm(p.area, p.area_unc, ".1f"),
-                *_pm(p.fwhm, p.fwhm_unc, ".3f"),
+                *fwhm,
                 f"{p.amplitude:.4g}",
                 _num(p.significance, ".1f"),
                 f"{r.pearson_chi2:.1f}/{r.ndf}",

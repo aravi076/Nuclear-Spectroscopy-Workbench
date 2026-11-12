@@ -108,13 +108,22 @@ class AppState(QObject):
         self._excluded[key] = frozenset(channels)
         self.peaks_changed.emit(key)
 
-    # ---- peak fits (per spectrum; a new fit of the same region replaces the old one)
+    # ---- peak fits (per spectrum). A new fit replaces every earlier fit of the same
+    # peak: one whose region is identical, holds a peak of the new fit, or whose peaks
+    # lie in the new region. The latest fit is the analyst's result (reports would
+    # otherwise list one peak twice). Neighbouring groups whose regions merely overlap
+    # at their margins are both kept.
     def store_fit(self, key: str, result: FitResult) -> None:
-        kept = [
-            r
-            for r in self._fits.get(key, [])
-            if (r.first_channel, r.last_channel) != (result.first_channel, result.last_channel)
-        ]
+        def same_peaks(r: FitResult) -> bool:
+            if (r.first_channel, r.last_channel) == (result.first_channel, result.last_channel):
+                return True
+            inside_new = any(
+                result.first_channel <= p.centroid <= result.last_channel for p in r.peaks
+            )
+            inside_old = any(r.first_channel <= p.centroid <= r.last_channel for p in result.peaks)
+            return inside_new or inside_old
+
+        kept = [r for r in self._fits.get(key, []) if not same_peaks(r)]
         kept.append(result)
         kept.sort(key=lambda r: r.first_channel)
         self._fits[key] = kept
