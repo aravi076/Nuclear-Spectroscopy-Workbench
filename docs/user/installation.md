@@ -11,7 +11,7 @@ For using NSW without a source checkout. Requires `uv` (https://docs.astral.sh/u
 uv downloads Python 3.12 if it is not installed.
 
 ```powershell
-uv tool install --python 3.12 "nsw[gui] @ git+https://github.com/aravi076/Nuclear-Spectroscopy-Workbench@v0.9.0-beta"
+uv tool install --python 3.12 "nsw[gui] @ git+https://github.com/aravi076/Nuclear-Spectroscopy-Workbench@v0.9.0-beta.2"
 nsw                                  # start the application
 nsw --self-test $env:TEMP\nsw-check  # optional: end-to-end check on synthetic data
 uv tool uninstall nsw                # remove
@@ -19,7 +19,7 @@ uv tool uninstall nsw                # remove
 
 - Install from the GitHub URL only. NSW is not published on PyPI, and a package named
   `nsw` there may belong to someone else.
-- The tag (`@v0.9.0-beta`) pins the NSW version. The dependencies are resolved when you
+- The tag (`@v0.9.0-beta.2`) pins the NSW version. The dependencies are resolved when you
   install, not taken from `uv.lock`, so they can be newer than the tested versions; the
   self-test shows whether everything works. For exactly the tested versions use the
   Windows installer or the development setup below.

@@ -38,6 +38,14 @@ tree of tag `v0.9.0-beta` (`f2de73d`), including the synthetic demo spectra. Sam
 earlier build of the same version (SHA-256 `a8fcea2d…`) lacked the demo spectra and was
 discarded.
 
+### 1b. Release build `v0.9.0-beta.2` (done 2026-11-13)
+
+Installer `NSW-Setup-0.9.0b2-x64.exe`, 78 526 748 bytes, SHA-256
+`444f2d13c1d8573079ed5ad24da0fe0d47297dd499a949b3992b8ceacd95d707`, built from the
+release branch for 0.9.0b2 (fixes of the first hands-on test). Build-time self-test 11
+of 11; smoke test on the development PC: all checks PASS, including reinstall over the
+existing installation.
+
 ## 2. Clean machine (owner action — not yet done)
 
 Needed: Windows 10 or 11 x64 **without** Python, Git or uv — a second PC, a fresh local
