@@ -171,6 +171,11 @@ Limitations:
   searched channels are empty.
 - Any sharp curvature of the continuum (Compton edge, backscatter bump) responds. A
   candidate is **not** a confirmed full-energy peak.
+- The step from the empty channels below the lower-level discriminator to the continuum
+  responds like a peak. For count data the cut-off is the first channel of the first
+  run of three non-empty channels (isolated counts below it are ignored) when a
+  continuum follows it (a lone peak on empty channels does not qualify); no candidate
+  is reported whose kernel reaches below it, and the search says so.
 - Lines closer than about one FWHM give a single candidate.
 - Positions are channels. An energy is attached only with a verified calibration.
 

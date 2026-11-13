@@ -107,7 +107,7 @@ def build_report(
     banner, kind = _banner(spectrum)
     sections: list[Section] = [
         Section("Measurement", describe.measurement_rows(spectrum)),
-        Section("File and data identity", describe.file_rows(spectrum)),
+        Section("File and data identity", describe.file_rows(spectrum, include_path=False)),
         Section("Detector and acquisition", describe.detector_rows(spectrum)),
         Section("Energy calibration", describe.calibration_rows(spectrum)),
         Section(

@@ -5,6 +5,8 @@ Nothing here computes physics; missing items are reported as missing, never fill
 
 from __future__ import annotations
 
+import math
+
 from nsw.core.calibration import CalibrationStatus
 from nsw.core.spectrum import Spectrum
 
@@ -29,6 +31,19 @@ _HARDWARE_KEYS: tuple[tuple[str, str], ...] = (
     ("[242] ULD %", "ULD (%)"),
     ("[243] PUR Guard", "Pile-up rejector guard"),
 )
+
+
+def tidy_number(text: str) -> str:
+    """A decimal setting as the instrument meant it. Vendor files store many settings as
+    32-bit floats written out in full (8.800000190734863 for 8.8); 7 significant digits
+    is the precision of such a float. Anything that is not a plain decimal is unchanged."""
+    try:
+        value = float(text)
+    except (TypeError, ValueError):
+        return text
+    if not math.isfinite(value) or "." not in text or len(text.split(".")[1]) <= 6:
+        return text
+    return f"{value:.7g}"
 
 
 def _fmt_time(seconds: float | None) -> str:
@@ -88,7 +103,7 @@ def detector_rows(s: Spectrum) -> Rows:
     found = False
     for key, label in _HARDWARE_KEYS:
         if key in s.metadata:
-            rows.append((label, s.metadata[key]))
+            rows.append((label, tidy_number(s.metadata[key])))
             found = True
     if not found:
         rows.append(
@@ -99,13 +114,16 @@ def detector_rows(s: Spectrum) -> Rows:
     return rows
 
 
-def file_rows(s: Spectrum, other_files: tuple[str, ...] = ()) -> Rows:
+def file_rows(s: Spectrum, other_files: tuple[str, ...] = (), *, include_path: bool = True) -> Rows:
+    """``include_path=False`` for documents that leave this computer (reports): the
+    folder can contain personal names; the file is identified by name and SHA-256."""
     if s.source is None:
         return [("File", "none (generated or derived in memory)")]
     src = s.source
-    rows: Rows = [
-        ("Original file name", src.filename),
-        ("Path", src.path),
+    rows: Rows = [("Original file name", src.filename)]
+    if include_path:
+        rows.append(("Path", src.path))
+    rows += [
         ("Format", src.format),
         ("Adapter", src.adapter),
         ("Size", f"{src.size_bytes:,} bytes"),

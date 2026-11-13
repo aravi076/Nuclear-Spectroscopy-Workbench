@@ -40,6 +40,13 @@ Limitations (see docs/science/scientific_methodology.md, section 7)
   that a candidate is a single line.
 * Positions are channel numbers. An energy is attached only when the spectrum carries a
   *verified* calibration.
+* A measured spectrum is empty below the lower-level discriminator; the jump from those
+  empty channels to the continuum is a step, and the filter answers a step as it answers
+  a peak. For count data the first channel of the first run of three non-empty channels
+  is taken as that cut-off when a continuum follows it (90 % of the next eight widest
+  scales non-empty; a lone peak on empty channels does not qualify), and no candidate
+  is reported whose filter window reaches below it (as at the ends of the spectrum,
+  where the window is incomplete).
 """
 
 from __future__ import annotations
@@ -194,6 +201,25 @@ class _Raw:
     s: float
 
 
+def lower_cutoff_index(counts: NDArray[np.generic], run: int = 3, sustain: int = 0) -> int:
+    """Array index where a count spectrum starts: the first channel of the first run of
+    ``run`` non-empty channels (0 if there is no such run). Isolated counts below the
+    discriminator edge, also in the very first channel, do not end the empty region.
+
+    With ``sustain`` > 0 the run must open a continuum: at least 90 % of the ``sustain``
+    channels from there on are non-empty. A peak standing alone on empty channels rises
+    and falls again and is therefore not taken for the discriminator edge."""
+    occupied = np.asarray(counts) > 0
+    for i in range(occupied.size - run + 1):
+        if occupied[i : i + run].all():
+            if sustain > 0:
+                ahead = occupied[i : i + sustain]
+                if ahead.size < sustain or ahead.mean() < 0.9:
+                    return 0
+            return i
+    return 0
+
+
 def find_peak_candidates(spectrum: Spectrum, settings: PeakSearchSettings) -> PeakSearchResult:
     """Search ``spectrum`` for peak candidates. The spectrum is not modified."""
     # imported on use: scipy.signal loads scipy.stats and scipy.interpolate, about 1.7 s
@@ -217,6 +243,18 @@ def find_peak_candidates(spectrum: Spectrum, settings: PeakSearchSettings) -> Pe
     if spectrum.metadata.get("display_only") == "true":
         raise ProcessingError("a display-only (smoothed) spectrum must not be analysed")
 
+    # the edge must open a continuum at least 8 widest scales long (a lone peak does not)
+    sustain = math.ceil(8.0 * max(settings.fwhm_channels))
+    cutoff = lower_cutoff_index(spectrum.counts, sustain=sustain) if spectrum.is_count_data else 0
+    if cutoff > 0:
+        warnings.append(
+            f"channels {spectrum.first_channel}–{spectrum.first_channel + cutoff - 1} are "
+            "(almost) empty, below the lower-level discriminator; no candidate is reported "
+            "whose search "
+            "window reaches below channel "
+            f"{spectrum.first_channel + cutoff}, because the filter answers that edge as a peak"
+        )
+
     raw: list[_Raw] = []
     responses: dict[float, tuple[NDArray[np.float64], NDArray[np.float64]]] = {}
     for fwhm in sorted(set(settings.fwhm_channels)):
@@ -230,6 +268,7 @@ def find_peak_candidates(spectrum: Spectrum, settings: PeakSearchSettings) -> Pe
         if 2 * half + 1 > n:
             warnings.append(f"scale FWHM {fwhm:g} is too wide for this spectrum and was skipped")
             continue
+        s[: min(n, cutoff + half)] = 0.0  # window reaches below the discriminator cut-off
         distance = max(1, round(settings.min_separation_fwhm * fwhm))
         idx, _ = find_peaks(s[lo : hi + 1], height=settings.threshold, distance=distance)
         raw.extend(_Raw(int(i) + lo, sigma, float(s[int(i) + lo])) for i in idx)

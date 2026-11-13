@@ -30,6 +30,7 @@ BOTTOM = 0.05
 LINE = 0.0135  # fraction of the page height per text line at 8 pt
 WRAP = 110  # characters per line
 TABLE_WIDTH = 132  # monospace characters that fit the text width
+KEY_WIDTH = 32  # label column of key/value rows; longer labels go on a line of their own
 BANNER_COLOURS = {"synthetic": "#0b5cad", "provisional": "#b00020", "experimental": "#333333"}
 
 
@@ -124,10 +125,14 @@ def _lines(section: Section) -> list[tuple[str, str]]:
     """(style, text) lines of one section: 'head', 'key', 'text', 'mono'."""
     out: list[tuple[str, str]] = [("head", section.title)]
     width = max((len(k) for k, _ in section.rows), default=0)
-    width = min(width, 32)
+    width = min(width, KEY_WIDTH)
     for key, value in section.rows:
         wrapped = textwrap.wrap(str(value), WRAP - width - 3) or [""]
-        out.append(("key", f"{key[:width]:<{width}}   {wrapped[0]}"))
+        if len(key) > width:  # a long label gets its own line(s); never cut off
+            out.extend(("key", k) for k in textwrap.wrap(key, WRAP))
+            out.extend(("key", " " * (width + 3) + w) for w in wrapped)
+            continue
+        out.append(("key", f"{key:<{width}}   {wrapped[0]}"))
         out.extend(("key", " " * (width + 3) + w) for w in wrapped[1:])
     if section.table is not None:
         headers, rows = section.table
