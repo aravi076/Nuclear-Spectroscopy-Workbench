@@ -115,6 +115,17 @@ and the interface calls `services` only. Details:
 from the release page; see [docs/user/WINDOWS_INSTALLER.md](docs/user/WINDOWS_INSTALLER.md)
 (the installer is not code-signed).
 
+**One command, with [uv](https://docs.astral.sh/uv/)** (installs the release into its
+own environment and adds an `nsw` command):
+
+```powershell
+uv tool install --python 3.12 "nsw[gui] @ git+https://github.com/aravi076/Nuclear-Spectroscopy-Workbench@v0.9.0-beta"
+nsw
+```
+
+Install from this URL only: NSW is not published on PyPI. Remove with
+`uv tool uninstall nsw`. Details: [docs/user/installation.md](docs/user/installation.md).
+
 **From source (Windows, PowerShell)** requires Python 3.12 or later for the desktop interface (the calculation engine
 also runs on 3.11; PySide6 6.12 aborts Python 3.11 with a `none_dealloc` error) and
 [uv](https://docs.astral.sh/uv/).

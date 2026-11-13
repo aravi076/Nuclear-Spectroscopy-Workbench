@@ -5,7 +5,30 @@ extension of the interface stack (PySide6 6.12) releases Python's `None` too oft
 the interpreter aborts after a while (`Fatal Python error: none_dealloc`); 3.12 is
 immune. The calculation engine also runs on 3.11. The Windows installer bundles 3.12.
 
-Development setup (Windows 11, PowerShell). Requires `uv` (https://docs.astral.sh/uv/).
+## One command (uv tool)
+
+For using NSW without a source checkout. Requires `uv` (https://docs.astral.sh/uv/);
+uv downloads Python 3.12 if it is not installed.
+
+```powershell
+uv tool install --python 3.12 "nsw[gui] @ git+https://github.com/aravi076/Nuclear-Spectroscopy-Workbench@v0.9.0-beta"
+nsw                                  # start the application
+nsw --self-test $env:TEMP\nsw-check  # optional: end-to-end check on synthetic data
+uv tool uninstall nsw                # remove
+```
+
+- Install from the GitHub URL only. NSW is not published on PyPI, and a package named
+  `nsw` there may belong to someone else.
+- The tag (`@v0.9.0-beta`) pins the NSW version. The dependencies are resolved when you
+  install, not taken from `uv.lock`, so they can be newer than the tested versions; the
+  self-test shows whether everything works. For exactly the tested versions use the
+  Windows installer or the development setup below.
+- Tested 2026-11-13 on Windows 11 with uv 0.11.7: installed in about 30 s, self-test 11
+  of 11 steps passed, uninstall clean.
+
+## Development setup
+
+Windows 11, PowerShell. Requires `uv` (https://docs.astral.sh/uv/).
 
 ```powershell
 cd Nuclear-Spectroscopy-Workbench
