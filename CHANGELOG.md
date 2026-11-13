@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0b2 (`v0.9.0-beta.2`) — 2026-11-13
 
 ### Fixed (first hands-on test with a measured spectrum)
 
@@ -9,6 +9,10 @@
   fitted again in an overlapping region is listed once (the latest fit); the file's
   folder is no longer printed (name and SHA-256 identify it); long labels are no longer
   cut off; instrument settings stored as 32-bit numbers are shown at their precision.
+
+### Added
+
+- One-command installation with `uv tool install` (README, `docs/user/installation.md`).
 
 ## 0.9.0b1 (`v0.9.0-beta`) — 2026-11-12
 
